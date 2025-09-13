@@ -15,13 +15,11 @@
         <span class="badge"><span data-t="hudStage">ステージ</span>: <b id="stageNum"></b></span>
         <span class="badge"><span data-t="hudAttachment">愛着</span>: <b id="bondVal">0</b></span>
       </div>
-      <div class="row">
-        <button onclick="location.href='index.html'">≡</button>
-      </div>
+      <div class="row"><button onclick="location.href='index.html'">≡</button></div>
     </div>
 
     <div class="track"></div>
-    <img id="sprite" class="sprite" src="" alt="buddy">
+    <img id="sprite" class="sprite" alt="buddy" style="display:none">
     <div id="markers"></div>
   </div>
 
@@ -32,7 +30,16 @@
   <script>
     applyTexts();
 
-    // 10ステージ定義（必要に応じてここを編集）
+    // キャラ画像のベースパスと対応表（ここだけ変えればOK）
+    const SPRITE_BASE = 'public/characters/';
+    const CHAR_SPRITE = {
+      blue:   'blue_closed.png',
+      green:  'green_open.png',
+      pink:   'pink_closed.png',
+      purple: 'purple_closed.png'
+    };
+
+    // ステージ定義
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", theme:"最初の印象と愛着の芽生え", events:[
         {id:"flower", text:"花がきれい…写真撮りたいな", x:.32, delta:{guide:+2, watch:+1, ignore:-1}},
@@ -69,24 +76,29 @@
       ]},
     ];
 
-    const sprite = document.getElementById('sprite');
-    const markers = document.getElementById('markers');
-    const modal = document.getElementById('modal');
+    const sprite   = document.getElementById('sprite');
+    const markers  = document.getElementById('markers');
+    const modal    = document.getElementById('modal');
     const stageNum = document.getElementById('stageNum');
-    const bondVal = document.getElementById('bondVal');
+    const bondVal  = document.getElementById('bondVal');
 
     const char = Y_STATE.get('yorimichi.character','pink');
-    sprite.src = `public/assets/characters/${char}_open.png`;
-
     let stageIndex = Math.min(Math.max(1,Y_STATE.get('yorimichi.stage',1)), 10);
     let attachment = Y_STATE.get('yorimichi.attachment',0);
-
     stageNum.textContent = stageIndex;
-    bondVal.textContent = attachment;
+    bondVal.textContent  = attachment;
+
+    // 画像は読み込み完了後に表示
+    function setSpriteByChar(c){
+      const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
+      const img = new Image();
+      img.onload  = ()=>{ sprite.src = url; sprite.style.display='block'; };
+      img.onerror = ()=>{ console.warn('Sprite not found:', url); };
+      img.src = url;
+    }
+    setSpriteByChar(char);
 
     const stage = STAGES[stageIndex-1];
-
-    // マーカー生成
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
       const x = Math.floor(ev.x*100);
@@ -98,9 +110,8 @@
       markers.appendChild(m);
     });
 
-    // 移動ループ
-    let px = 6;        // 左位置（vw）
-    let speed = 0.06;  // 速度（vw/frame）
+    let px = 6;       // vw
+    let speed = 0.06; // vw/frame
     let resolved = new Set();
 
     function showBubble(text){
@@ -110,7 +121,7 @@
       document.body.appendChild(b);
       const r = sprite.getBoundingClientRect();
       b.style.left = (r.left + r.width*0.5) + 'px';
-      b.style.top = (r.top - 6) + 'px';
+      b.style.top  = (r.top - 6) + 'px';
       setTimeout(()=>b.remove(), 1200);
     }
 
@@ -124,9 +135,7 @@
           <button id="aIgnore" class="flat" data-t="ignore">${t('ignore')}</button>
         </div>
         <hr class="sep">
-        <div class="footer small">
-          <b>${t('destination')}</b>：${stage.dest} ／ <b>Theme</b>：${stage.theme}
-        </div>
+        <div class="footer small"><b>${t('destination')}</b>：${stage.dest} ／ <b>Theme</b>：${stage.theme}</div>
       </div>`;
       applyTexts();
       document.getElementById('aGuide').onclick = ()=> decide('guide',ev);
@@ -143,9 +152,7 @@
       resolved.add(ev.id);
       sprite.classList.add('bounce');
       setTimeout(()=>sprite.classList.remove('bounce'), 600);
-      if(kind==='guide') showBubble('！');
-      else if(kind==='watch') showBubble('…');
-      else showBubble('？');
+      if(kind==='guide') showBubble('！'); else if(kind==='watch') showBubble('…'); else showBubble('？');
     }
 
     function endStage(){
@@ -158,26 +165,17 @@
         <h4>${t('reflectTitle')}</h4>
         <p>・${t('reflectQ1')}</p>
         <p>・${t('reflectQ2')}</p>
-        <div class="actions">
-          <button class="primary" id="nextBtn">${stageIndex<10?t('next'):t('toMenu')}</button>
-        </div>
+        <div class="actions"><button class="primary" id="nextBtn">${stageIndex<10?t('next'):t('toMenu')}</button></div>
       </div>`;
       document.getElementById('nextBtn').onclick = ()=>{
-        if(stageIndex<10){
-          stageIndex++;
-          Y_STATE.set('yorimichi.stage', stageIndex);
-          location.reload();
-        }else{
-          go('index.html');
-        }
+        if(stageIndex<10){ stageIndex++; Y_STATE.set('yorimichi.stage', stageIndex); location.reload(); }
+        else{ go('index.html'); }
       };
     }
 
     function step(){
       px += speed;
       sprite.style.left = px + 'vw';
-
-      // 近接イベント判定
       const vw = window.innerWidth/100;
       const r = sprite.getBoundingClientRect();
       const sx = r.left + r.width*0.5;
@@ -189,18 +187,12 @@
         const ev = stage.events.find(e=>e.id===near.dataset.id);
         openEvent(ev);
       }
-
-      // 到着
-      if(px >= 94){
-        endStage();
-        return;
-      }
+      if(px >= 94){ endStage(); return; }
       requestAnimationFrame(step);
     }
 
     function init(){
       localStorage.setItem('yorimichi.lastPage','game.html');
-      sprite.src = `public/assets/characters/${char}_open.png`;
       requestAnimationFrame(step);
     }
     init();
