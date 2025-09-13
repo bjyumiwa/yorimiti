@@ -19,7 +19,7 @@
     </div>
 
     <div class="track"></div>
-    <img id="sprite" class="sprite" alt="buddy" style="display:none">
+    <img id="sprite" class="sprite face-right" alt="buddy" style="display:none">
     <div id="markers"></div>
   </div>
 
@@ -30,7 +30,14 @@
   <script>
     applyTexts();
 
-    // キャラ画像のベースパスと対応表（ここだけ変えればOK）
+    // 背景：端末時刻でクラス付与（朝/昼/夕）
+    (function setTimeBG(){
+      const h = new Date().getHours();
+      const cls = (h<10) ? 'time-morning' : (h<16) ? 'time-noon' : 'time-evening';
+      document.body.classList.add(cls);
+    })();
+
+    // 画像パス（ご指定の配置）
     const SPRITE_BASE = 'public/characters/';
     const CHAR_SPRITE = {
       blue:   'blue_closed.png',
@@ -39,39 +46,39 @@
       purple: 'purple_closed.png'
     };
 
-    // ステージ定義
+    // ステージ定義（到着後の振り返りは無し）
     const STAGES = [
-      {id:1, place:"公園の小道", dest:"ベンチ", theme:"最初の印象と愛着の芽生え", events:[
+      {id:1, place:"公園の小道", dest:"ベンチ", events:[
         {id:"flower", text:"花がきれい…写真撮りたいな", x:.32, delta:{guide:+2, watch:+1, ignore:-1}},
-        {id:"cat", text:"猫ちゃん…なでたいな", x:.56, delta:{guide:+2, watch:+1, ignore:-1}},
-        {id:"ice", text:"アイス食べたい…", x:.78, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"cat",    text:"猫ちゃん…なでたいな",        x:.56, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"ice",    text:"アイス食べたい…",             x:.78, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
-      {id:2, place:"ショッピング街", dest:"図書館", theme:"物欲と自制心", events:[
+      {id:2, place:"ショッピング街", dest:"図書館", events:[
         {id:"game", text:"ゲームセンター…少しだけ", x:.35, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"sale", text:"セールだ…見るだけなら", x:.6, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"sale", text:"セールだ…見るだけなら",   x:.6,  delta:{guide:+1, watch:0, ignore:-1}},
       ]},
-      {id:3, place:"通学路", dest:"学校の門", theme:"責任と義務", events:[
+      {id:3, place:"通学路", dest:"学校の門", events:[
         {id:"friend", text:"友だちが困ってる…", x:.45, delta:{guide:+1, watch:+1, ignore:-2}},
       ]},
-      {id:4, place:"海辺の遊歩道", dest:"灯台", theme:"自由と保護", events:[
+      {id:4, place:"海辺の遊歩道", dest:"灯台", events:[
         {id:"sea", text:"海で遊びたい…", x:.5, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
-      {id:5, place:"故郷の町", dest:"思い出の場所", theme:"記憶と共有", events:[
+      {id:5, place:"故郷の町", dest:"思い出の場所", events:[
         {id:"photo", text:"昔の写真…", x:.52, delta:{guide:+1, watch:+1, ignore:0}},
       ]},
-      {id:6, place:"病院周辺", dest:"お見舞い", theme:"痛みへの共感", events:[
+      {id:6, place:"病院周辺", dest:"お見舞い", events:[
         {id:"wheel", text:"手伝った方が…", x:.5, delta:{guide:+2, watch:+1, ignore:-1}},
       ]},
-      {id:7, place:"分かれ道の街", dest:"約束の場所", theme:"選択の責任", events:[
+      {id:7, place:"分かれ道の街", dest:"約束の場所", events:[
         {id:"shortcut", text:"近道…でも…", x:.5, delta:{guide:+1, watch:0, ignore:-1}},
       ]},
-      {id:8, place:"卒業式へ", dest:"式典会場", theme:"手放す学び", events:[
+      {id:8, place:"卒業式へ", dest:"式典会場", events:[
         {id:"last", text:"最後の思い出…", x:.55, delta:{guide:0, watch:+2, ignore:-1}},
       ]},
-      {id:9, place:"夕暮れの河川敷", dest:"思い出のベンチ", theme:"愛情と支配", events:[
+      {id:9, place:"夕暮れの河川敷", dest:"思い出のベンチ", events:[
         {id:"risk", text:"危ないけど…", x:.5, delta:{guide:+1, watch:+1, ignore:-2}},
       ]},
-      {id:10, place:"駅のプラットフォーム", dest:"旅立ちの電車", theme:"別れと成長", events:[
+      {id:10, place:"駅のプラットフォーム", dest:"旅立ちの電車", events:[
         {id:"farewell", text:"本当に行くの…？", x:.5, delta:{guide:0, watch:+2, ignore:-1}},
       ]},
     ];
@@ -88,17 +95,19 @@
     stageNum.textContent = stageIndex;
     bondVal.textContent  = attachment;
 
-    // 画像は読み込み完了後に表示
+    // スプライトを確実に読み込んでから表示。デフォは右向き(進行方向)
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
-      img.onload  = ()=>{ sprite.src = url; sprite.style.display='block'; };
+      img.onload  = ()=>{ sprite.src = url; sprite.style.display='block'; sprite.classList.add('face-right'); };
       img.onerror = ()=>{ console.warn('Sprite not found:', url); };
       img.src = url;
     }
     setSpriteByChar(char);
 
     const stage = STAGES[stageIndex-1];
+
+    // イベントマーカー生成
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
       const x = Math.floor(ev.x*100);
@@ -110,8 +119,10 @@
       markers.appendChild(m);
     });
 
-    let px = 6;       // vw
-    let speed = 0.06; // vw/frame
+    // 進行（右へ）。停止フラグで制御
+    let px = 6;        // vw
+    let speed = 0.065; // vw/frame 少し速く
+    let paused = false;
     let resolved = new Set();
 
     function showBubble(text){
@@ -126,6 +137,8 @@
     }
 
     function openEvent(ev){
+      paused = true;
+      sprite.classList.add('paused');
       modal.style.display='flex';
       modal.innerHTML = `<div class="sheet">
         <h3>「${ev.text}」</h3>
@@ -135,7 +148,7 @@
           <button id="aIgnore" class="flat" data-t="ignore">${t('ignore')}</button>
         </div>
         <hr class="sep">
-        <div class="footer small"><b>${t('destination')}</b>：${stage.dest} ／ <b>Theme</b>：${stage.theme}</div>
+        <div class="footer small"><b>目的地</b>：${stage.dest}</div>
       </div>`;
       applyTexts();
       document.getElementById('aGuide').onclick = ()=> decide('guide',ev);
@@ -150,22 +163,19 @@
       bondVal.textContent = attachment;
       Y_STATE.set('yorimichi.attachment', attachment);
       resolved.add(ev.id);
-      sprite.classList.add('bounce');
-      setTimeout(()=>sprite.classList.remove('bounce'), 600);
+      sprite.classList.remove('paused');
       if(kind==='guide') showBubble('！'); else if(kind==='watch') showBubble('…'); else showBubble('？');
+      paused = false;
     }
 
     function endStage(){
+      paused = true;
+      sprite.classList.add('paused');
       modal.style.display='flex';
-      modal.innerHTML = `<div class="sheet">
-        <h3>${t('stageCleared')} — ${t('arrive')}</h3>
+      modal.innerHTML = `<div class="sheet" style="text-align:center">
+        <h3>到着！</h3>
         <p class="small">${stage.place} → <b>${stage.dest}</b></p>
-        <div class="progress"><i style="width:${Math.max(0,Math.min(100,(attachment+50)/1.2))}%"></i></div>
-        <hr class="sep">
-        <h4>${t('reflectTitle')}</h4>
-        <p>・${t('reflectQ1')}</p>
-        <p>・${t('reflectQ2')}</p>
-        <div class="actions"><button class="primary" id="nextBtn">${stageIndex<10?t('next'):t('toMenu')}</button></div>
+        <div class="actions"><button class="primary" id="nextBtn">${stageIndex<10?'次へ':'メニューに戻る'}</button></div>
       </div>`;
       document.getElementById('nextBtn').onclick = ()=>{
         if(stageIndex<10){ stageIndex++; Y_STATE.set('yorimichi.stage', stageIndex); location.reload(); }
@@ -174,19 +184,26 @@
     }
 
     function step(){
-      px += speed;
-      sprite.style.left = px + 'vw';
-      const vw = window.innerWidth/100;
-      const r = sprite.getBoundingClientRect();
-      const sx = r.left + r.width*0.5;
-      const near = Array.from(document.querySelectorAll('.marker')).find(m=>{
-        const mx = parseFloat(m.style.left)*vw;
-        return Math.abs(mx - sx) < 30 && !resolved.has(m.dataset.id);
-      });
-      if(near){
-        const ev = stage.events.find(e=>e.id===near.dataset.id);
-        openEvent(ev);
+      if(!paused){
+        px += speed;
+        sprite.style.left = px + 'vw';
       }
+
+      // 近接イベント判定（停止中は判定しない）
+      if(!paused){
+        const vw = window.innerWidth/100;
+        const r = sprite.getBoundingClientRect();
+        const sx = r.left + r.width*0.5;
+        const near = Array.from(document.querySelectorAll('.marker')).find(m=>{
+          const mx = parseFloat(m.style.left)*vw;
+          return Math.abs(mx - sx) < 30 && !resolved.has(m.dataset.id);
+        });
+        if(near){
+          const ev = stage.events.find(e=>e.id===near.dataset.id);
+          openEvent(ev);
+        }
+      }
+
       if(px >= 94){ endStage(); return; }
       requestAnimationFrame(step);
     }
