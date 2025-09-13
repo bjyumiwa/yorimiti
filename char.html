@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Choose — Yorimichi</title>
+  <link rel="stylesheet" href="public/css.css">
+</head>
+<body>
+  <div class="container">
+    <div class="card" style="text-align:center">
+      <h2 data-t="chooseChar">いっしょに歩く仲間をえらんでください</h2>
+      <div class="grid">
+        <div class="tile">
+          <img src="public/assets/characters/blue_open.png" alt="blue">
+          <button class="primary" data-pick="blue">Blue</button>
+        </div>
+        <div class="tile">
+          <img src="public/assets/characters/green_open.png" alt="green">
+          <button class="primary" data-pick="green">Green</button>
+        </div>
+        <div class="tile">
+          <img src="public/assets/characters/pink_open.png" alt="pink">
+          <button class="primary" data-pick="pink">Pink</button>
+        </div>
+        <div class="tile">
+          <img src="public/assets/characters/purple_open.png" alt="purple">
+          <button class="primary" data-pick="purple">Purple</button>
+        </div>
+      </div>
+      <div class="row">
+        <button onclick="go('index.html')" data-t="toMenu">メニューに戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="public/js_i18n.js"></script>
+  <script src="public/js_state.js"></script>
+  <script>
+    applyTexts();
+    document.querySelectorAll("[data-pick]").forEach(b=>{
+      b.onclick = ()=>{
+        Y_STATE.set('yorimichi.character', b.dataset.pick);
+        Y_STATE.set('yorimichi.stage', 1);
+        Y_STATE.set('yorimichi.attachment', 0);
+        go('game.html');
+      };
+    });
+  </script>
+</body>
+</html>
