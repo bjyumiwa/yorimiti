@@ -1,4 +1,4 @@
-/* Yorimichi — global styles (mobile-first) */
+/* ========== Base (共通) ========== */
 *{box-sizing:border-box}
 html,body{
   margin:0;padding:0;height:100%;
@@ -10,40 +10,83 @@ button{border:none;border-radius:14px;padding:10px 14px;background:#2b2b3a;color
 button.primary{background:#5865f2}
 button.flat{background:transparent}
 .container{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:18px}
-.card{
-  background:rgba(255,255,255,.06);backdrop-filter:blur(6px);
-  border:1px solid rgba(255,255,255,.09);
-  border-radius:20px;padding:18px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3)
-}
+.card{background:rgba(255,255,255,.06);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.09);border-radius:20px;padding:18px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3)}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:center}
 .lang-picker button{opacity:.6}
 .lang-picker button.active{opacity:1;outline:2px solid #5865f2}
 .small{font-size:.9rem;opacity:.8}
 
-/* character grid */
+/* ========== Character select grid ========== */
 .grid{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:14px;width:min(560px,96vw)}
 .tile{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .tile img{width:100%;height:auto;display:block;filter:drop-shadow(0 8px 24px rgba(0,0,0,.45))}
 
+/* ========== HUD & badges ========== */
 .progress{height:10px;background:rgba(255,255,255,.15);border-radius:999px;overflow:hidden}
-.progress > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#54ffa0,#6aa6ff);transition:width .5s}
-
-/* GAME scene */
-#game{position:relative;width:100vw;height:100vh;overflow:hidden}
-.bg-grad{position:absolute;inset:0;background:radial-gradient(1000px 600px at 50% 0%,rgba(255,205,160,.35),transparent 60%),linear-gradient(180deg,#12121c 0%,#0b0b12 60%);z-index:0}
-.track{position:absolute;left:0;right:0;top:55%;height:8px;background:linear-gradient(180deg,#6d5f49 0,#5b4f3f);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.5);z-index:1}
-.sprite{position:absolute;bottom:calc(45% - 40px);left:6vw;width:min(22vw,160px);image-rendering:auto;filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));z-index:3;transition:transform .2s}
-.sprite.bounce{animation:bounce .6s ease}
-@keyframes bounce{0%{transform:translateY(0)}30%{transform:translateY(-8px)}100%{transform:translateY(0)}}
-.marker{position:absolute;bottom:calc(45% - 44px);transform:translateX(-50%);z-index:2;text-align:center}
-.marker .dot{width:16px;height:16px;background:#ffd66b;border-radius:50%;margin:0 auto 6px auto;box-shadow:0 0 14px rgba(255,210,120,.9)}
+.progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#54ffa0,#6aa6ff);transition:width .5s}
 .hud{position:absolute;left:0;right:0;top:0;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;z-index:10}
 .badges{display:flex;gap:8px;align-items:center}
 .badge{padding:6px 10px;border:1px solid rgba(255,255,255,.15);border-radius:999px;background:rgba(255,255,255,.05)}
+
+/* ========== Game scene ========== */
+#game{position:relative;width:100vw;height:100vh;overflow:hidden}
+
+/* 時刻による背景（朝／昼／夕） */
+.bg-grad{position:absolute;inset:0;z-index:0;transition:background 1s}
+.time-morning .bg-grad{
+  background:
+    radial-gradient(1200px 600px at 50% 0%, rgba(255,230,180,.55), transparent 60%),
+    linear-gradient(180deg,#FFE3B3 0%,#FFC188 35%,#FFEED9 100%);
+}
+.time-noon .bg-grad{
+  background:
+    radial-gradient(1000px 600px at 50% -10%, rgba(255,255,255,.35), transparent 60%),
+    linear-gradient(180deg,#7ecbff 0%,#a7e0ff 40%,#e6f6ff 100%);
+}
+.time-evening .bg-grad{
+  background:
+    radial-gradient(1200px 600px at 50% 0%, rgba(255,190,150,.55), transparent 60%),
+    linear-gradient(180deg,#FFB36B 0%,#FF8E8E 40%,#FFD5A8 100%);
+}
+
+/* 地面レール（簡易） */
+.track{position:absolute;left:0;right:0;top:55%;height:8px;background:linear-gradient(180deg,#6d5f49 0,#5b4f3f);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.5);z-index:1}
+
+/* ふきだし */
 .bubble{position:absolute;transform:translate(-50%,-120%);background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.2);padding:8px 10px;border-radius:12px;backdrop-filter:blur(4px);white-space:nowrap;font-size:14px;z-index:5}
+
+/* モーダル */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:20}
 .sheet{width:min(520px,92vw);background:#151520;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:16px 16px 12px}
 .sheet h3{margin:6px 0 8px 0}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 hr.sep{border:none;border-top:1px solid rgba(255,255,255,.14);margin:12px 0}
 .footer{opacity:.8;font-size:.9rem}
+
+/* ========== Sprite (進行方向＆とことこ) ========== */
+/* 方向は --sx で反転。アニメは transform 内で scaleX(var(--sx)) を常に適用して維持 */
+.sprite{
+  --sx: 1; /* right */
+  position:absolute;bottom:calc(45% - 40px);left:6vw;
+  width:min(22vw,160px);image-rendering:auto;z-index:3;
+  filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));
+  animation: toko .9s ease-in-out infinite;
+  transform-origin:50% 90%;
+}
+.sprite.face-right{ --sx: 1; }
+.sprite.face-left{ --sx: -1; }
+.sprite.paused{ animation-play-state: paused; }
+
+/* とことこ歩き：上下＋微回転＋左右ゆらぎ。方向は scaleX(var(--sx)) で保持 */
+@keyframes toko{
+  0%   { transform: translateY(0) rotate(0deg) scaleX(var(--sx)); }
+  20%  { transform: translateY(-6px) rotate(1.2deg) scaleX(var(--sx)); }
+  40%  { transform: translateY(0) rotate(0deg) scaleX(var(--sx)); }
+  60%  { transform: translateY(-6px) rotate(-1.2deg) scaleX(var(--sx)); }
+  80%  { transform: translateY(0) rotate(0deg) scaleX(var(--sx)); }
+  100% { transform: translateY(-2px) rotate(.6deg) scaleX(var(--sx)); }
+}
+
+/* イベントの見た目 */
+.marker{position:absolute;bottom:calc(45% - 44px);transform:translateX(-50%);z-index:2;text-align:center}
+.marker .dot{width:16px;height:16px;background:#ffd66b;border-radius:50%;margin:0 auto 6px auto;box-shadow:0 0 14px rgba(255,210,120,.9)}
