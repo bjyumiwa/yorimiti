@@ -46,7 +46,7 @@
       purple: 'purple_closed.png'
     };
 
-    // ステージ定義（到着後の振り返りは無し）
+    // ステージ（振り返りなし）
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", events:[
         {id:"flower", text:"花がきれい…写真撮りたいな", x:.32, delta:{guide:+2, watch:+1, ignore:-1}},
@@ -95,7 +95,7 @@
     stageNum.textContent = stageIndex;
     bondVal.textContent  = attachment;
 
-    // スプライトを確実に読み込んでから表示。デフォは右向き(進行方向)
+    // スプライトを読み込んで表示。進行方向=右向き
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
@@ -107,7 +107,7 @@
 
     const stage = STAGES[stageIndex-1];
 
-    // イベントマーカー生成
+    // イベント配置
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
       const x = Math.floor(ev.x*100);
@@ -119,9 +119,9 @@
       markers.appendChild(m);
     });
 
-    // 進行（右へ）。停止フラグで制御
-    let px = 6;        // vw
-    let speed = 0.065; // vw/frame 少し速く
+    // 進行（右へ）
+    let px = 6;
+    let speed = 0.065;
     let paused = false;
     let resolved = new Set();
 
@@ -136,19 +136,21 @@
       setTimeout(()=>b.remove(), 1200);
     }
 
+    // 下部アクションバー版のイベント表示
     function openEvent(ev){
       paused = true;
       sprite.classList.add('paused');
       modal.style.display='flex';
       modal.innerHTML = `<div class="sheet">
-        <h3>「${ev.text}」</h3>
-        <div class="actions">
-          <button class="primary" id="aGuide" data-t="guide">${t('guide')}</button>
-          <button id="aWatch" data-t="watch">${t('watch')}</button>
-          <button id="aIgnore" class="flat" data-t="ignore">${t('ignore')}</button>
+        <div class="sheet-body">
+          <h3>「${ev.text}」</h3>
+          <div class="small"><b>目的地</b>：${stage.dest}</div>
         </div>
-        <hr class="sep">
-        <div class="footer small"><b>目的地</b>：${stage.dest}</div>
+        <div class="actionbar">
+          <button class="primary" id="aGuide">${t('guide')}</button>
+          <button id="aWatch">${t('watch')}</button>
+          <button class="flat" id="aIgnore">${t('ignore')}</button>
+        </div>
       </div>`;
       applyTexts();
       document.getElementById('aGuide').onclick = ()=> decide('guide',ev);
@@ -173,9 +175,13 @@
       sprite.classList.add('paused');
       modal.style.display='flex';
       modal.innerHTML = `<div class="sheet" style="text-align:center">
-        <h3>到着！</h3>
-        <p class="small">${stage.place} → <b>${stage.dest}</b></p>
-        <div class="actions"><button class="primary" id="nextBtn">${stageIndex<10?'次へ':'メニューに戻る'}</button></div>
+        <div class="sheet-body">
+          <h3>到着！</h3>
+          <p class="small">${stage.place} → <b>${stage.dest}</b></p>
+        </div>
+        <div class="actionbar">
+          <button class="primary" id="nextBtn">${stageIndex<10?t('next'):t('toMenu')}</button>
+        </div>
       </div>`;
       document.getElementById('nextBtn').onclick = ()=>{
         if(stageIndex<10){ stageIndex++; Y_STATE.set('yorimichi.stage', stageIndex); location.reload(); }
@@ -189,7 +195,6 @@
         sprite.style.left = px + 'vw';
       }
 
-      // 近接イベント判定（停止中は判定しない）
       if(!paused){
         const vw = window.innerWidth/100;
         const r = sprite.getBoundingClientRect();
