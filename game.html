@@ -22,7 +22,7 @@
       <div class="track"></div>
       <div id="markers" class="layer"></div>
 
-      <img id="sprite" class="sprite" alt="buddy" style="display:none;bottom:0px">
+      <img id="sprite" class="sprite face-right" alt="buddy" style="display:none;bottom:0px">
       <div id="shadow" class="shadow-ellipse" style="bottom:0px"></div>
     </div>
   </div>
@@ -35,11 +35,10 @@
     <button id="btnIgnore" class="flat">放置</button>
   </div>
 
-  <!-- 依存スクリプトを先に読み込み -->
   <script src="public/js_i18n.js"></script>
   <script src="public/js_state.js"></script>
 
-  <!-- エラー表示（赤帯） -->
+  <!-- エラー帯 -->
   <script>
     (function(){
       window.addEventListener('error', e=>{
@@ -55,9 +54,7 @@
     })();
   </script>
 
-  <!-- メインロジック -->
   <script type="module">
-    // フォールバック（万一読み込めなかった場合も動かすため）
     if (typeof window.applyTexts !== 'function') window.applyTexts = ()=>{};
     if (!window.go) window.go = (u)=>location.href = u;
     const Y = window.Y_STATE || {
@@ -72,60 +69,84 @@
       document.body.classList.add(h<10?'time-morning':h<16?'time-noon':'time-evening');
     })();
 
+    /* マウスのみごく弱いチルト。タッチ端末では固定 */
     (function tilt(){
+      if (!window.matchMedia || !matchMedia('(pointer:fine)').matches) return;
       const game = document.getElementById('game');
-      function apply(xRatio,yRatio){
-        const ry = (xRatio-0.5)*-10;
-        const rx = 8 + (yRatio-0.5)*6;
+      function apply(xRatio){
+        const ry = (xRatio-0.5)*-6; // -3〜+3deg 程度
         game.style.setProperty('--ry', ry.toFixed(2)+'deg');
-        game.style.setProperty('--rx', rx.toFixed(2)+'deg');
       }
       window.addEventListener('pointermove', e=>{
-        apply(e.clientX/window.innerWidth, e.clientY/window.innerHeight);
+        apply(e.clientX/window.innerWidth);
       }, {passive:true});
-      apply(.5,.5);
+      apply(.5);
     })();
 
+    /* アセット */
     const SPRITE_BASE = 'public/characters/';
     const ITEM_BASE   = 'public/items/';
     const CHAR_SPRITE = { blue:'blue_closed.png', green:'green_open.png', pink:'pink_closed.png', purple:'purple_closed.png' };
     const TRANSPARENT_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
+    /* 寄り道ポイント増量（花とアサリは短縮クリック可） */
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", events:[
-        {id:"flower", text:"お花がある。",  icon:"🌸", x:.32, kind:"flower", dur:9000, delta:{guide:+2, watch:+1, ignore:-1}},
-        {id:"cat",    text:"猫ちゃん…なでたいな", x:.56, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"f1", text:"お花がある。", icon:"🌸", x:.18, kind:"flower", dur:8000, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"c1", text:"猫ちゃん…なでたいな", x:.32, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"i1", text:"アイス…少しだけ", x:.48, kind:"generic", dur:5000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"b1", text:"小鳥のさえずり", x:.68, kind:"generic", dur:5000, delta:{guide:0, watch:+1, ignore:0}},
+        {id:"f2", text:"もう一株きれいな花", icon:"🌸", x:.82, kind:"flower", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:2, place:"ショッピング街", dest:"図書館", events:[
-        {id:"game", text:"ゲームセンター…少しだけ", x:.35, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"sale", text:"セールだ…見るだけなら",   x:.62, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"g1", text:"ゲームセンター…", x:.20, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"s1", text:"セールだ…", x:.36, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"c2", text:"カフェの甘い匂い", x:.55, kind:"generic", dur:5000, delta:{guide:0, watch:+1, ignore:0}},
+        {id:"sns", text:"SNS通知が気になる", x:.76, kind:"generic", dur:5000, delta:{guide:+1, watch:0, ignore:-1}},
       ]},
       {id:3, place:"通学路", dest:"学校の門", events:[
-        {id:"friend", text:"友だちが困ってる…", x:.45, kind:"generic", dur:8000, delta:{guide:+1, watch:+1, ignore:-2}},
+        {id:"fr", text:"友だちが困ってる…", x:.28, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-2}},
+        {id:"wl", text:"落とし物の財布", x:.50, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"mc", text:"泣いてる子ども", x:.72, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-2}},
       ]},
       {id:4, place:"海辺の遊歩道", dest:"灯台", events:[
-        {id:"shell", text:"あ、貝を拾おう。", icon:"🐚", x:.50, kind:"shell", dur:9000, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"sea", text:"波打ち際で遊びたい", x:.22, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"sh1", text:"あ、貝を拾おう。", icon:"🐚", x:.44, kind:"shell", dur:8000, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"busk", text:"路上演奏が心地いい", x:.66, kind:"generic", dur:6000, delta:{guide:0, watch:+1, ignore:0}},
+        {id:"sh2", text:"もう一つ光る貝", icon:"🐚", x:.84, kind:"shell", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:5, place:"故郷の町", dest:"思い出の場所", events:[
-        {id:"photo", text:"昔の写真…", x:.52, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
+        {id:"ph", text:"昔の写真…", x:.30, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
+        {id:"dg", text:"駄菓子屋の前で足が止まる", x:.52, kind:"generic", dur:5000, delta:{guide:0, watch:+1, ignore:0}},
+        {id:"fr2", text:"懐かしい人に会った", x:.74, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:0}},
       ]},
       {id:6, place:"病院周辺", dest:"お見舞い", events:[
-       {id:"wheel", text:"手伝った方が…", x:.50, kind:"generic", dur:7000, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"wh", text:"車いすの人を手伝う？", x:.26, kind:"generic", dur:7000, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"fl", text:"売店の花を選びたい", icon:"🌸", x:.50, kind:"flower", dur:7000, delta:{guide:0, watch:+2, ignore:0}},
+        {id:"bn", text:"泣いている人がいる", x:.74, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:7, place:"分かれ道の街", dest:"約束の場所", events:[
-        {id:"shortcut", text:"近道…でも…", x:.50, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"sc", text:"近道…でも進入禁止", x:.32, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"cr", text:"群衆に流されそう", x:.56, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"rs", text:"前の失敗を思い出す", x:.80, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
       ]},
       {id:8, place:"卒業式へ", dest:"式典会場", events:[
-        {id:"last", text:"最後の思い出…", x:.55, kind:"generic", dur:6000, delta:{guide:0, watch:+2, ignore:-1}},
+        {id:"mm", text:"最後の思い出づくり", x:.30, kind:"generic", dur:6000, delta:{guide:0, watch:+2, ignore:-1}},
+        {id:"fu", text:"将来の不安がよぎる", x:.54, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
+        {id:"fr3", text:"友だちと別れの時間", x:.78, kind:"generic", dur:6000, delta:{guide:0, watch:+2, ignore:0}},
       ]},
       {id:9, place:"夕暮れの河川敷", dest:"思い出のベンチ", events:[
-        {id:"risk", text:"危ないけど…", x:.50, kind:"generic", dur:8000, delta:{guide:+1, watch:+1, ignore:-2}},
+        {id:"rk", text:"危ない場所に惹かれる", x:.34, kind:"generic", dur:8000, delta:{guide:+1, watch:+1, ignore:-2}},
+        {id:"ind", text:"一人で決めたい気持ち", x:.60, kind:"generic", dur:7000, delta:{guide:0, watch:+1, ignore:0}},
       ]},
       {id:10, place:"駅のプラットフォーム", dest:"旅立ちの電車", events:[
-        {id:"farewell", text:"本当に行くの…？", x:.50, kind:"generic", dur:7000, delta:{guide:0, watch:+2, ignore:-1}},
+        {id:"st", text:"足がすくむ", x:.28, kind:"generic", dur:6000, delta:{guide:0, watch:+1, ignore:0}},
+        {id:"rv", text:"旅の記憶がよみがえる", x:.56, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
+        {id:"fw", text:"本当に行くの…？", x:.82, kind:"generic", dur:7000, delta:{guide:0, watch:+2, ignore:-1}},
       ]},
     ];
 
+    /* 参照 */
     const sprite   = document.getElementById('sprite');
     const shadowEl = document.getElementById('shadow');
     const markers  = document.getElementById('markers');
@@ -134,11 +155,14 @@
     const bondVal  = document.getElementById('bondVal');
     const mini     = document.getElementById('miniTools');
 
+    /* 状態 */
     const char = Y.get('yorimichi.character','pink');
     let stageIndex = Math.min(Math.max(1,Y.get('yorimichi.stage',1)), 10);
     let attachment = Y.get('yorimichi.attachment',0);
     stageNum.textContent = stageIndex; bondVal.textContent = attachment;
 
+    /* スプライト読込 */
+    const TRANSPARENT_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
@@ -148,9 +172,11 @@
     }
     setSpriteByChar(char);
 
-    const BASE_SPEED_VW_PER_SEC = 1.8;
+    /* 時間設計（≒60秒/シーン） */
+    const BASE_SPEED_VW_PER_SEC = 1.95; // マーカー増量に合わせ微調整
     let px = 6;
     let lastTs = performance.now();
+    let prevPx = px;   // 進行方向判定用
 
     function baseBottomPx(){ return window.innerHeight*0.45 - 40; }
     let bottomOffset = 0;
@@ -169,6 +195,7 @@
       shadowEl.style.opacity = (0.9*k).toFixed(2);
     }
 
+    /* マーカー作成（最初は点のみ） */
     const stage = STAGES[stageIndex-1];
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
@@ -184,9 +211,10 @@
       markers.appendChild(m);
     });
 
+    /* 寄り道状態 */
     let detouring = false, detourEndTime = 0, detourItemEl = null, activeEvent = null;
 
-    const REVEAL_DIST = 70;
+    const REVEAL_DIST = 78;   // 文字の見やすさ重視で少し遠め
     const TRIGGER_DIST = 26;
 
     function revealIfNear(){
@@ -270,6 +298,7 @@
       if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
     }
 
+    /* ミニボタン */
     document.getElementById('btnGuide').onclick = ()=>{
       if(!detouring) return;
       attachment += (activeEvent?.delta?.guide||0);
@@ -289,8 +318,8 @@
       extendDetour(2500); showBubble('？');
     };
 
-    let touchY = null;
-    let swipeSum = 0;
+    /* スクロール／スワイプで短縮 */
+    let touchY=null, swipeSum=0;
     window.addEventListener('wheel', e=>{
       if(detouring){ shortenDetour( Math.min(1, Math.abs(e.deltaY)/600) ); }
     }, {passive:true});
@@ -306,6 +335,15 @@
     }, {passive:true});
     window.addEventListener('touchend', ()=>{ touchY=null; }, {passive:true});
 
+    /* 進行方向で向きを自動切替（左右どちらへ動いてもOK） */
+    function updateFacing(){
+      const v = px - prevPx;
+      if (v > 0.02) { sprite.classList.add('face-right'); sprite.classList.remove('face-left'); }
+      else if (v < -0.02) { sprite.classList.add('face-left'); sprite.classList.remove('face-right'); }
+      prevPx = px;
+    }
+
+    /* 到着 */
     function endStage(){
       modal.style.display='flex';
       modal.innerHTML = `<div class="sheet" style="text-align:center">
@@ -319,16 +357,19 @@
       };
     }
 
+    /* ループ */
     function step(ts){
       const dt = (ts - lastTs) / 1000; lastTs = ts;
 
       if(detouring){
-        const sway = Math.sin(ts/400) * 1.2;
+        const sway = Math.sin(ts/400) * 1.2; // ふわっと横揺れ
         applySpritePos(sway);
+        updateFacing(); /* 寄り道中も向きを維持 */
         if(ts >= detourEndTime){ endDetour(); }
       }else{
-        px += 1.8 * dt;
+        px += BASE_SPEED_VW_PER_SEC * dt;
         applySpritePos();
+        updateFacing();
         revealIfNear();
         checkEventTrigger();
       }
