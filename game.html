@@ -27,15 +27,17 @@
     </div>
   </div>
 
-  <!-- 到着のみ -->
   <div id="modal" class="modal" style="display:none"></div>
 
-  <!-- 右下ミニボタン -->
   <div class="minitools" id="miniTools" style="display:none">
     <button id="btnGuide">導く</button>
     <button id="btnWatch" class="flat">見守る</button>
     <button id="btnIgnore" class="flat">放置</button>
   </div>
+
+  <!-- 依存スクリプトを先に読み込み -->
+  <script src="public/js_i18n.js"></script>
+  <script src="public/js_state.js"></script>
 
   <!-- エラー表示（赤帯） -->
   <script>
@@ -53,17 +55,23 @@
     })();
   </script>
 
-  <!-- メインロジック（モジュール化でグローバル衝突を回避） -->
+  <!-- メインロジック -->
   <script type="module">
+    // フォールバック（万一読み込めなかった場合も動かすため）
+    if (typeof window.applyTexts !== 'function') window.applyTexts = ()=>{};
+    if (!window.go) window.go = (u)=>location.href = u;
+    const Y = window.Y_STATE || {
+      get:(k,d)=>{try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch{return d}},
+      set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+    };
+
     applyTexts();
 
-    // 背景（朝/昼/夕）
     (function setTimeBG(){
       const h = new Date().getHours();
       document.body.classList.add(h<10?'time-morning':h<16?'time-noon':'time-evening');
     })();
 
-    // 3Dチルト
     (function tilt(){
       const game = document.getElementById('game');
       function apply(xRatio,yRatio){
@@ -78,13 +86,11 @@
       apply(.5,.5);
     })();
 
-    // アセット
     const SPRITE_BASE = 'public/characters/';
     const ITEM_BASE   = 'public/items/';
     const CHAR_SPRITE = { blue:'blue_closed.png', green:'green_open.png', pink:'pink_closed.png', purple:'purple_closed.png' };
     const TRANSPARENT_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
-    // ステージ（ポイントのみ表示→近接で種類ラベル→さらに近接で発火）
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", events:[
         {id:"flower", text:"お花がある。",  icon:"🌸", x:.32, kind:"flower", dur:9000, delta:{guide:+2, watch:+1, ignore:-1}},
@@ -104,7 +110,7 @@
         {id:"photo", text:"昔の写真…", x:.52, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
       ]},
       {id:6, place:"病院周辺", dest:"お見舞い", events:[
-        {id:"wheel", text:"手伝った方が…", x:.50, kind:"generic", dur:7000, delta:{guide:+2, watch:+1, ignore:-1}},
+       {id:"wheel", text:"手伝った方が…", x:.50, kind:"generic", dur:7000, delta:{guide:+2, watch:+1, ignore:-1}},
       ]},
       {id:7, place:"分かれ道の街", dest:"約束の場所", events:[
         {id:"shortcut", text:"近道…でも…", x:.50, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
@@ -120,7 +126,6 @@
       ]},
     ];
 
-    // 参照
     const sprite   = document.getElementById('sprite');
     const shadowEl = document.getElementById('shadow');
     const markers  = document.getElementById('markers');
@@ -129,13 +134,11 @@
     const bondVal  = document.getElementById('bondVal');
     const mini     = document.getElementById('miniTools');
 
-    // 状態
-    const char = Y_STATE.get('yorimichi.character','pink');
-    let stageIndex = Math.min(Math.max(1,Y_STATE.get('yorimichi.stage',1)), 10);
-    let attachment = Y_STATE.get('yorimichi.attachment',0);
+    const char = Y.get('yorimichi.character','pink');
+    let stageIndex = Math.min(Math.max(1,Y.get('yorimichi.stage',1)), 10);
+    let attachment = Y.get('yorimichi.attachment',0);
     stageNum.textContent = stageIndex; bondVal.textContent = attachment;
 
-    // スプライト読込（右向き固定・フェイルセーフ）
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
@@ -145,7 +148,6 @@
     }
     setSpriteByChar(char);
 
-    // 動き（約60s/シーン）
     const BASE_SPEED_VW_PER_SEC = 1.8;
     let px = 6;
     let lastTs = performance.now();
@@ -167,7 +169,6 @@
       shadowEl.style.opacity = (0.9*k).toFixed(2);
     }
 
-    // マーカー（最初は点だけ）
     const stage = STAGES[stageIndex-1];
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
@@ -183,12 +184,10 @@
       markers.appendChild(m);
     });
 
-    // 寄り道状態
     let detouring = false, detourEndTime = 0, detourItemEl = null, activeEvent = null;
 
-    // 近づくとラベル、もっと近づくと発火
-    const REVEAL_DIST = 70;   // px
-    const TRIGGER_DIST = 26;  // px
+    const REVEAL_DIST = 70;
+    const TRIGGER_DIST = 26;
 
     function revealIfNear(){
       const vw = window.innerWidth/100;
@@ -271,27 +270,25 @@
       if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
     }
 
-    // ミニボタン
     document.getElementById('btnGuide').onclick = ()=>{
       if(!detouring) return;
       attachment += (activeEvent?.delta?.guide||0);
-      bondVal.textContent = attachment; Y_STATE.set('yorimichi.attachment', attachment);
+      bondVal.textContent = attachment; Y.set('yorimichi.attachment', attachment);
       shortenDetour(0.6); showBubble('！');
     };
     document.getElementById('btnWatch').onclick = ()=>{
       if(!detouring) return;
       attachment += (activeEvent?.delta?.watch||0);
-      bondVal.textContent = attachment; Y_STATE.set('yorimichi.attachment', attachment);
+      bondVal.textContent = attachment; Y.set('yorimichi.attachment', attachment);
       showBubble('…');
     };
     document.getElementById('btnIgnore').onclick = ()=>{
       if(!detouring) return;
       attachment += (activeEvent?.delta?.ignore||0);
-      bondVal.textContent = attachment; Y_STATE.set('yorimichi.attachment', attachment);
+      bondVal.textContent = attachment; Y.set('yorimichi.attachment', attachment);
       extendDetour(2500); showBubble('？');
     };
 
-    // スクロール／スワイプで短縮（重複宣言防止のため一箇所で宣言）
     let touchY = null;
     let swipeSum = 0;
     window.addEventListener('wheel', e=>{
@@ -309,7 +306,6 @@
     }, {passive:true});
     window.addEventListener('touchend', ()=>{ touchY=null; }, {passive:true});
 
-    // 到着
     function endStage(){
       modal.style.display='flex';
       modal.innerHTML = `<div class="sheet" style="text-align:center">
@@ -318,12 +314,11 @@
         <div class="actionbar"><button class="primary" id="nextBtn">${stageIndex<10?'次へ':'メニューに戻る'}</button></div>
       </div>`;
       document.getElementById('nextBtn').onclick = ()=>{
-        if(stageIndex<10){ stageIndex++; Y_STATE.set('yorimichi.stage', stageIndex); location.reload(); }
+        if(stageIndex<10){ stageIndex++; Y.set('yorimichi.stage', stageIndex); location.reload(); }
         else{ go('index.html'); }
       };
     }
 
-    // ループ
     function step(ts){
       const dt = (ts - lastTs) / 1000; lastTs = ts;
 
@@ -332,7 +327,7 @@
         applySpritePos(sway);
         if(ts >= detourEndTime){ endDetour(); }
       }else{
-        px += BASE_SPEED_VW_PER_SEC * dt;
+        px += 1.8 * dt;
         applySpritePos();
         revealIfNear();
         checkEventTrigger();
@@ -343,7 +338,7 @@
     }
 
     function init(){
-      localStorage.setItem('yorimichi.lastPage','game.html');
+      Y.set('yorimichi.lastPage','game.html');
       applySpritePos();
       requestAnimationFrame(step);
     }
