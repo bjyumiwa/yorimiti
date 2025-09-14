@@ -3,372 +3,121 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Game — Yorimichi</title>
+  <title>Game</title>
   <link rel="stylesheet" href="public/css.css">
 </head>
 <body>
-  <div id="game">
-    <div class="world" id="world">
-      <div class="layer bg-grad"></div>
+  <!-- 時間帯グラデ背景と幾何学デコ -->
+  <div class="bg-base" id="bgBase"></div>
+  <div class="bg-decor" id="bgDecor"></div>
 
-      <div class="hud">
-        <div class="badges">
-          <span class="badge"><span data-t="hudStage">ステージ</span>: <b id="stageNum"></b></span>
-          <span class="badge"><span data-t="hudAttachment">愛着</span>: <b id="bondVal">0</b></span>
-        </div>
-        <div class="row"><button onclick="location.href='index.html'">≡</button></div>
-      </div>
-
-      <div class="track"></div>
-      <div id="markers" class="layer"></div>
-
-      <img id="sprite" class="sprite face-right" alt="buddy" style="display:none;bottom:0px">
-      <div id="shadow" class="shadow-ellipse" style="bottom:0px"></div>
-    </div>
+  <!-- HUD（例） -->
+  <div class="hud" id="hud">
+    <div class="badge" id="stageBadge">Stage 1</div>
+    <div class="badge" id="attachBadge">♥︎ 0</div>
   </div>
 
-  <div id="modal" class="modal" style="display:none"></div>
+  <!-- 道ライン -->
+  <div class="path" aria-hidden="true"></div>
 
-  <div class="minitools" id="miniTools" style="display:none">
+  <!-- キャラ（右向き基準、進行方向で左右反転） -->
+  <img id="friend" src="public/characters/pink_closed.png" alt="friend">
+
+  <!-- ミニボタン（寄り道中のみ表示） -->
+  <div class="mini-btns" id="miniBtns" style="display:none">
     <button id="btnGuide">導く</button>
-    <button id="btnWatch" class="flat">見守る</button>
-    <button id="btnIgnore" class="flat">放置</button>
+    <button id="btnWatch">見守る</button>
+    <button id="btnLeave">放置</button>
   </div>
 
+  <!-- 画面下エラーバー -->
+  <div class="errorbar" id="errorbar"></div>
+
+  <!-- 依存スクリプト（順番厳守） -->
   <script src="public/js_i18n.js"></script>
   <script src="public/js_state.js"></script>
 
-  <script>
-    (function(){
-      window.addEventListener('error', e=>{
-        const d=document.createElement('div'); d.className='err';
-        d.textContent='Error: '+(e.message||e.error||'unknown');
-        document.body.appendChild(d);
-      });
-      window.addEventListener('unhandledrejection', e=>{
-        const d=document.createElement('div'); d.className='err';
-        d.textContent='Promise rejection: '+(e.reason && e.reason.message ? e.reason.message : e.reason);
-        document.body.appendChild(d);
-      });
-    })();
-  </script>
-
+  <!-- メイン（既存ロジックの前に置いてOK） -->
   <script type="module">
-    if (typeof window.applyTexts !== 'function') window.applyTexts = ()=>{};
-    if (!window.go) window.go = (u)=>location.href = u;
-    const Y = window.Y_STATE || {
-      get:(k,d)=>{try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch{return d}},
-      set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
-    };
+  /* applyTexts 未定義でも落ちないフォールバック */
+  if (typeof window.applyTexts !== 'function') {
+    window.applyTexts = function(){};
+  }
 
-    applyTexts();
+  /* 3Dフラグ（無効化済。CSS側で transform/perspective をOFF） */
+  document.body.classList.add('no-3d');
 
-    (function setTimeBG(){
-      const h = new Date().getHours();
-      document.body.classList.add(h<10?'time-morning':h<16?'time-noon':'time-evening');
-    })();
+  /* 時間帯クラス付与（朝/昼/夕） */
+  const bgBase = document.getElementById('bgBase');
+  function setTimeBandClass(d=new Date()){
+    const h = d.getHours();
+    let band = 'noon';
+    if (h >= 5 && h < 11) band = 'morning';
+    else if (h >= 11 && h < 17) band = 'noon';
+    else band = 'evening';
+    bgBase.classList.remove('morning','noon','evening');
+    bgBase.classList.add(band);
+    return band;
+  }
+  const band = setTimeBandClass();
 
-    if (window.matchMedia && matchMedia('(pointer:fine)').matches){
-      const game = document.getElementById('game');
-      function applyTilt(xRatio){
-        const ry = (xRatio-0.5)*-6;
-        game.style.setProperty('--ry', ry.toFixed(2)+'deg');
-      }
-      window.addEventListener('pointermove', e=>{
-        applyTilt(e.clientX/window.innerWidth);
-      }, {passive:true});
-      applyTilt(.5);
+  /* 幾何学デコ（四角・三角）を少量生成 */
+  const PALETTES = {
+    morning: ['#FFD7A8','#FFC7CE','#FFF0B5','#BFE6FF','#E9F7FF'],
+    noon:    ['#BFE7FF','#C2F0E4','#FFF3B0','#FFD6E7','#E8F5FF'],
+    evening: ['#FFC7D9','#FFBFA8','#C7C5FF','#FFE1A8','#FCEBFF']
+  };
+  const bgDecor = document.getElementById('bgDecor');
+  function spawnDecor(count=18){
+    const colors = PALETTES[band] || PALETTES.noon;
+    const vw = Math.max(320, window.innerWidth);
+    const vh = Math.max(480, window.innerHeight);
+    for (let i=0;i<count;i++){
+      const isTri = Math.random() < 0.5;
+      const el = document.createElement('span');
+      el.className = 'shape ' + (isTri ? 'tri' : 'sq');
+      const size = Math.round(12 + Math.random()*18); // 12–30px
+      const x = Math.round(Math.random() * (vw-30)) + 'px';
+      const y = Math.round(Math.random() * (vh-30)) + 'px';
+      const dur = (10 + Math.random()*8).toFixed(1) + 's';
+      const delay = (-Math.random()*5).toFixed(1) + 's';
+      const color = colors[Math.floor(Math.random()*colors.length)];
+      el.style.setProperty('--s', size+'px');
+      el.style.setProperty('--x', x);
+      el.style.setProperty('--y', y);
+      el.style.setProperty('--dur', dur);
+      el.style.setProperty('--delay', delay);
+      el.style.setProperty('--c', color);
+      bgDecor.appendChild(el);
     }
+  }
+  spawnDecor(18);
 
-    const SPRITE_BASE = 'public/characters/';
-    const ITEM_BASE   = 'public/items/';
-    const CHAR_SPRITE = { blue:'blue_closed.png', green:'green_open.png', pink:'pink_closed.png', purple:'purple_closed.png' };
-    const TRANSPARENT_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
+  /* 進行方向で左右反転。既存の移動ロジックから呼んでください */
+  const friend = document.getElementById('friend');
+  function faceByVelocity(vx){
+    if (vx > 0) friend.classList.remove('face-left');
+    else if (vx < 0) friend.classList.add('face-left');
+  }
+  // 例：faceByVelocity(currentVX);
 
-    const STAGES = [
-      {id:1, place:"公園の小道", dest:"ベンチ", events:[
-        {id:"f1", text:"お花がある。", icon:"🌸", x:.18, kind:"flower", dur:8000, delta:{guide:+2, watch:+1, ignore:-1}},
-        {id:"c1", text:"猫ちゃん…なでたいな", x:.32, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:-1}},
-        {id:"i1", text:"アイス…少しだけ", x:.48, kind:"generic", dur:5000, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"b1", text:"小鳥のさえずり", x:.68, kind:"generic", dur:5000, delta:{guide:0, watch:+1, ignore:0}},
-        {id:"f2", text:"もう一株きれいな花", icon:"🌸", x:.82, kind:"flower", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
-      ]},
-      {id:2, place:"ショッピング街", dest:"図書館", events:[
-        {id:"g1", text:"ゲームセンター…", x:.20, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"s1", text:"セールだ…", x:.36, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"c2", text:"カフェの甘い匂い", x:.55, kind:"generic", dur:5000, delta:{guide:0, watch:+1, ignore:0}},
-        {id:"sns", text:"SNS通知が気になる", x:.76, kind:"generic", dur:5000, delta:{guide:+1, watch:0, ignore:-1}},
-      ]},
-      {id:3, place:"通学路", dest:"学校の門", events:[
-        {id:"fr", text:"友だちが困ってる…", x:.28, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-2}},
-        {id:"wl", text:"落とし物の財布", x:.50, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:-1}},
-        {id:"mc", text:"泣いてる子ども", x:.72, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-2}},
-      ]},
-      {id:4, place:"海辺の遊歩道", dest:"灯台", events:[
-        {id:"sea", text:"波打ち際で遊びたい", x:.22, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:-1}},
-        {id:"sh1", text:"あ、貝を拾おう。", icon:"🐚", x:.44, kind:"shell", dur:8000, delta:{guide:+1, watch:+1, ignore:-1}},
-        {id:"busk", text:"路上演奏が心地いい", x:.66, kind:"generic", dur:6000, delta:{guide:0, watch:+1, ignore:0}},
-        {id:"sh2", text:"もう一つ光る貝", icon:"🐚", x:.84, kind:"shell", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
-      ]},
-      {id:5, place:"故郷の町", dest:"思い出の場所", events:[
-        {id:"ph", text:"昔の写真…", x:.30, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
-        {id:"dg", text:"駄菓子屋の前で足が止まる", x:.52, kind:"generic", dur:5000, delta:{guide:0, watch:+1, ignore:0}},
-        {id:"fr2", text:"懐かしい人に会った", x:.74, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:0}},
-      ]},
-      {id:6, place:"病院周辺", dest:"お見舞い", events:[
-        {id:"wh", text:"車いすの人を手伝う？", x:.26, kind:"generic", dur:7000, delta:{guide:+2, watch:+1, ignore:-1}},
-        {id:"fl", text:"売店の花を選びたい", icon:"🌸", x:.50, kind:"flower", dur:7000, delta:{guide:0, watch:+2, ignore:0}},
-        {id:"bn", text:"泣いている人がいる", x:.74, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
-      ]},
-      {id:7, place:"分かれ道の街", dest:"約束の場所", events:[
-        {id:"sc", text:"近道…でも進入禁止", x:.32, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"cr", text:"群衆に流されそう", x:.56, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"rs", text:"前の失敗を思い出す", x:.80, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
-      ]},
-      {id:8, place:"卒業式へ", dest:"式典会場", events:[
-        {id:"mm", text:"最後の思い出づくり", x:.30, kind:"generic", dur:6000, delta:{guide:0, watch:+2, ignore:-1}},
-        {id:"fu", text:"将来の不安がよぎる", x:.54, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
-        {id:"fr3", text:"友だちと別れの時間", x:.78, kind:"generic", dur:6000, delta:{guide:0, watch:+2, ignore:0}},
-      ]},
-      {id:9, place:"夕暮れの河川敷", dest:"思い出のベンチ", events:[
-        {id:"rk", text:"危ない場所に惹かれる", x:.34, kind:"generic", dur:8000, delta:{guide:+1, watch:+1, ignore:-2}},
-        {id:"ind", text:"一人で決めたい気持ち", x:.60, kind:"generic", dur:7000, delta:{guide:0, watch:+1, ignore:0}},
-      ]},
-      {id:10, place:"駅のプラットフォーム", dest:"旅立ちの電車", events:[
-        {id:"st", text:"足がすくむ", x:.28, kind:"generic", dur:6000, delta:{guide:0, watch:+1, ignore:0}},
-        {id:"rv", text:"旅の記憶がよみがえる", x:.56, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
-        {id:"fw", text:"本当に行くの…？", x:.82, kind:"generic", dur:7000, delta:{guide:0, watch:+2, ignore:-1}},
-      ]},
-    ];
+  /* 寄り道用のミニボタン表示切替（既存フラグから呼ぶ想定） */
+  function setDetourUI(visible){
+    document.getElementById('miniBtns').style.display = visible ? 'flex' : 'none';
+  }
+  // 例：setDetourUI(isDetouring);
 
-    const sprite   = document.getElementById('sprite');
-    const shadowEl = document.getElementById('shadow');
-    const markers  = document.getElementById('markers');
-    const modal    = document.getElementById('modal');
-    const stageNum = document.getElementById('stageNum');
-    const bondVal  = document.getElementById('bondVal');
-    const mini     = document.getElementById('miniTools');
+  /* エラー表示ユーティリティ（画面下バー） */
+  function showError(msg){
+    const el = document.getElementById('errorbar');
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(()=>{ el.style.display='none'; }, 4000);
+  }
 
-    const char = Y.get('yorimichi.character','pink');
-    let stageIndex = Math.min(Math.max(1,Y.get('yorimichi.stage',1)), 10);
-    let attachment = Y.get('yorimichi.attachment',0);
-    stageNum.textContent = stageIndex; bondVal.textContent = attachment;
+  /* ここから下に、既存の STAGES / 自動歩行 / 寄り道トリガ 等のロジックを配置してください */
+  // （既存の変数名と衝突しないよう、上記は関数のみ。グローバル変数は未宣言です）
 
-    function setSpriteByChar(c){
-      const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
-      const img = new Image();
-      img.onload  = ()=>{ sprite.src = url; sprite.style.display='block'; };
-      img.onerror = ()=>{ sprite.src = TRANSPARENT_1PX; sprite.style.display='block'; console.warn('Sprite not found:', url); };
-      img.src = url;
-    }
-    setSpriteByChar(char);
-
-    const BASE_SPEED_VW_PER_SEC = 1.95;
-    let px = 6;
-    let lastTs = performance.now();
-    let prevPx = px;
-
-    function baseBottomPx(){ return window.innerHeight*0.45 - 40; }
-    let bottomOffset = 0;
-
-    function applySpritePos(extraXvw=0){
-      const left = (px + extraXvw);
-      const bottomPx = baseBottomPx() + bottomOffset;
-      sprite.style.left = left + 'vw';
-      sprite.style.bottom = bottomPx + 'px';
-      shadowEl.style.left = left + 'vw';
-      shadowEl.style.bottom = (baseBottomPx() - 14) + 'px';
-      const elWidth = Math.min(window.innerWidth*0.18, 160);
-      const k = Math.max(0.45, 1 - bottomOffset/160);
-      shadowEl.style.width = (elWidth*0.75*k) + 'px';
-      shadowEl.style.height = (26*k) + 'px';
-      shadowEl.style.opacity = (0.9*k).toFixed(2);
-    }
-
-    const stage = STAGES[stageIndex-1];
-    markers.innerHTML = '';
-    stage.events.forEach(ev=>{
-      const x = Math.floor(ev.x*100);
-      const m = document.createElement('div');
-      m.className = 'marker';
-      m.style.left = x+'vw';
-      m.dataset.id = ev.id;
-      m.dataset.kind = ev.kind || 'generic';
-      m.dataset.text = ev.text || '';
-      m.dataset.icon = ev.icon || '';
-      m.innerHTML = `<div class="dot"></div><div class="label"></div>`;
-      markers.appendChild(m);
-    });
-
-    let detouring = false, detourEndTime = 0, detourItemEl = null, activeEvent = null;
-
-    const REVEAL_DIST = 78;
-    const TRIGGER_DIST = 26;
-
-    function revealIfNear(){
-      const vw = window.innerWidth/100;
-      const r = sprite.getBoundingClientRect();
-      const sx = r.left + r.width*0.5;
-      document.querySelectorAll('.marker').forEach(m=>{
-        const mx = parseFloat(m.style.left)*vw;
-        const d = Math.abs(mx - sx);
-        if(d < REVEAL_DIST && !m.classList.contains('revealed')){
-          const kind = m.dataset.kind;
-          const icon = m.dataset.icon || (kind==='flower'?'🌸':kind==='shell'?'🐚':'');
-          const label = m.querySelector('.label');
-          label.textContent = icon ? `${icon} ${m.dataset.text}` : m.dataset.text;
-          m.classList.add('revealed');
-        }
-      });
-    }
-
-    function checkEventTrigger(){
-      if(detouring) return;
-      const vw = window.innerWidth/100;
-      const r = sprite.getBoundingClientRect();
-      const sx = r.left + r.width*0.5;
-      const near = Array.from(document.querySelectorAll('.marker')).find(m=>{
-        const mx = parseFloat(m.style.left)*vw;
-        return Math.abs(mx - sx) < TRIGGER_DIST;
-      });
-      if(near){
-        const ev = stage.events.find(e=>e.id===near.dataset.id);
-        startDetour(ev);
-        near.remove();
-      }
-    }
-
-    function showBubble(text){
-      const b = document.createElement('div');
-      b.className = 'bubble';
-      b.textContent = text;
-      document.body.appendChild(b);
-      const r = sprite.getBoundingClientRect();
-      b.style.left = (r.left + r.width*0.5) + 'px';
-      b.style.top  = (r.top - 10) + 'px';
-      setTimeout(()=>b.remove(), 1000);
-    }
-
-    function startDetour(ev){
-      detouring = true; activeEvent = ev;
-      detourEndTime = performance.now() + (ev.dur||6000);
-      bottomOffset = 70;
-      sprite.classList.remove('paused');
-      mini.style.display = 'flex';
-      showBubble('…');
-
-      if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
-      const r = sprite.getBoundingClientRect();
-      detourItemEl = document.createElement('div');
-      detourItemEl.className = 'float-item';
-      detourItemEl.style.left = (r.left + r.width*0.75) + 'px';
-      detourItemEl.style.top  = (r.top - 10) + 'px';
-
-      if(ev.kind==='flower'){
-        detourItemEl.classList.add('flower');
-        detourItemEl.textContent = '🌸';
-        detourItemEl.onclick = ()=> shortenDetour(0.5);
-      }else if(ev.kind==='shell'){
-        detourItemEl.classList.add('shell');
-        detourItemEl.innerHTML = `<img src="${ITEM_BASE}asari3.png" alt="shell">`;
-        detourItemEl.onclick = ()=>{ shortenDetour(0.5); detourItemEl.remove(); };
-      }
-      document.body.appendChild(detourItemEl);
-    }
-    function shortenDetour(rate){
-      const now = performance.now();
-      const remain = Math.max(0, detourEndTime - now);
-      detourEndTime = now + remain * (1-rate);
-    }
-    function extendDetour(ms){ detourEndTime += ms; }
-    function endDetour(){
-      detouring = false; activeEvent = null; bottomOffset = 0; mini.style.display = 'none';
-      if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
-    }
-
-    document.getElementById('btnGuide').onclick = ()=>{
-      if(!detouring) return;
-      attachment += (activeEvent?.delta?.guide||0);
-      bondVal.textContent = attachment; Y.set('yorimichi.attachment', attachment);
-      shortenDetour(0.6); showBubble('！');
-    };
-    document.getElementById('btnWatch').onclick = ()=>{
-      if(!detouring) return;
-      attachment += (activeEvent?.delta?.watch||0);
-      bondVal.textContent = attachment; Y.set('yorimichi.attachment', attachment);
-      showBubble('…');
-    };
-    document.getElementById('btnIgnore').onclick = ()=>{
-      if(!detouring) return;
-      attachment += (activeEvent?.delta?.ignore||0);
-      bondVal.textContent = attachment; Y.set('yorimichi.attachment', attachment);
-      extendDetour(2500); showBubble('？');
-    };
-
-    let touchY=null, swipeSum=0;
-    window.addEventListener('wheel', e=>{
-      if(detouring){ shortenDetour( Math.min(1, Math.abs(e.deltaY)/600) ); }
-    }, {passive:true});
-    window.addEventListener('touchstart', e=>{
-      if(e.touches[0]) touchY=e.touches[0].clientY;
-    }, {passive:true});
-    window.addEventListener('touchmove', e=>{
-      if(detouring && e.touches[0] && touchY!=null){
-        const dy = touchY - e.touches[0].clientY;
-        swipeSum += dy;
-        if(Math.abs(swipeSum) > 40){ shortenDetour(0.25); swipeSum=0; }
-      }
-    }, {passive:true});
-    window.addEventListener('touchend', ()=>{ touchY=null; }, {passive:true});
-
-    function updateFacing(){
-      const v = px - prevPx;
-      if (v > 0.02) { sprite.classList.add('face-right'); sprite.classList.remove('face-left'); }
-      else if (v < -0.02) { sprite.classList.add('face-left'); sprite.classList.remove('face-right'); }
-      prevPx = px;
-    }
-
-    function endStage(){
-      modal.style.display='flex';
-      modal.innerHTML = `<div class="sheet" style="text-align:center">
-        <h3>到着！</h3>
-        <p class="small">${stage.place} → <b>${stage.dest}</b></p>
-        <div class="actionbar"><button class="primary" id="nextBtn">${stageIndex<10?'次へ':'メニューに戻る'}</button></div>
-      </div>`;
-      document.getElementById('nextBtn').onclick = ()=>{
-        if(stageIndex<10){ stageIndex++; Y.set('yorimichi.stage', stageIndex); location.reload(); }
-        else{ go('index.html'); }
-      };
-    }
-
-    function step(ts){
-      const dt = (ts - lastTs) / 1000; lastTs = ts;
-
-      if(detouring){
-        const sway = Math.sin(ts/400) * 1.2;
-        applySpritePos(sway);
-        updateFacing();
-        if(ts >= detourEndTime){ endDetour(); }
-      }else{
-        px += BASE_SPEED_VW_PER_SEC * dt;
-        applySpritePos();
-        updateFacing();
-        revealIfNear();
-        checkEventTrigger();
-      }
-
-      if(px >= 94){ endStage(); return; }
-      requestAnimationFrame(step);
-    }
-
-    function init(){
-      Y.set('yorimichi.lastPage','game.html');
-      applySpritePos();
-      requestAnimationFrame(step);
-    }
-    init();
-
-    window.addEventListener('resize', ()=> applySpritePos(), {passive:true});
   </script>
 </body>
 </html>
