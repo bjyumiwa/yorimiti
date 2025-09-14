@@ -1,4 +1,3 @@
-/* ========== Base (共通) ========== */
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;height:100%;background:#0b0b12;color:#fff;
   font-family:system-ui,"Noto Sans JP","Noto Sans","Apple SD Gothic Neo","Segoe UI",sans-serif}
@@ -7,31 +6,20 @@ button{border:none;border-radius:14px;padding:10px 14px;background:#2b2b3a;color
   box-shadow:0 2px 8px rgba(0,0,0,.25);touch-action:manipulation}
 button.primary{background:#5865f2}
 button.flat{background:transparent;border:1px solid rgba(255,255,255,.22)}
-.container{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:18px}
-.card{background:rgba(255,255,255,.06);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.09);
-  border-radius:20px;padding:18px 16px;box-shadow:0 6px 24px rgba(0,0,0,.3)}
-.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:center}
-.lang-picker button{opacity:.6}
-.lang-picker button.active{opacity:1;outline:2px solid #5865f2}
 .small{font-size:.9rem;opacity:.8}
 
-/* ========== HUD ========== */
+/* HUD */
 .hud{position:absolute;left:0;right:0;top:0;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;z-index:50}
 .badges{display:flex;gap:8px;align-items:center}
 .badge{padding:6px 10px;border:1px solid rgba(255,255,255,.15);border-radius:999px;background:rgba(255,255,255,.05)}
 
-/* ========== Character select grid (他画面用) ========== */
-.grid{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:14px;width:min(560px,96vw)}
-.tile{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px}
-.tile img{width:100%;height:auto;display:block;filter:drop-shadow(0 8px 24px rgba(0,0,0,.45))}
-
-/* ========== Game scene (3D パララックス) ========== */
+/* Game scene with light 3D */
 #game{position:relative;width:100vw;height:100vh;overflow:hidden;perspective:900px;--rx:8deg;--ry:0deg}
 .world{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(var(--rx)) rotateY(var(--ry))}
 .layer{position:absolute;inset:0;transform-style:preserve-3d}
 
-/* 背景（朝/昼/夕 自動） */
-.bg-grad{z-index:0;transition:background 800ms, transform 800ms}
+/* Background (morning/noon/evening) */
+.bg-grad{z-index:0;transition:background 800ms}
 .time-morning .bg-grad{
   background:
     radial-gradient(1200px 600px at 50% 0%, rgba(255,230,180,.55), transparent 60%),
@@ -47,75 +35,74 @@ button.flat{background:transparent;border:1px solid rgba(255,255,255,.22)}
     radial-gradient(1200px 600px at 50% 0%, rgba(255,190,150,.55), transparent 60%),
     linear-gradient(180deg,#FFB36B 0%,#FF8E8E 40%,#FFD5A8 100%);
 }
-.bg-grad{transform:translateZ(-220px) scale(1.3)}
-.bg-back{z-index:1;transform:translateZ(-120px) scale(1.15);pointer-events:none;
-  background:
-    radial-gradient(800px 300px at 20% 40%, rgba(255,255,255,.08), transparent 60%),
-    radial-gradient(900px 360px at 80% 30%, rgba(0,0,0,.10), transparent 60%);
-}
 
-/* 地面レール */
+/* Ground line */
 .track{position:absolute;left:0;right:0;top:55%;height:8px;background:linear-gradient(180deg,#6d5f49 0,#5b4f3f);
-  border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.5);z-index:10;transform:translateZ(0)}
+  border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.5);z-index:10}
 
-/* 寄り道マーカー（最初は点だけ。近づくとラベル出現） */
+/* Markers: dot first, label shows when near */
 .marker{position:absolute;bottom:calc(45% - 48px);transform:translateX(-50%);z-index:20;text-align:center;pointer-events:none}
 .marker .dot{width:16px;height:16px;background:#ffd66b;border-radius:50%;margin:0 auto 6px auto;
   box-shadow:0 0 14px rgba(255,210,120,.9)}
 .marker .label{
   opacity:0;transform:scale(.95);transition:opacity .25s, transform .25s;
-  display:inline-block;padding:5px 10px;border-radius:12px;font-weight:700;letter-spacing:.02em;
+  display:inline-block;padding:6px 10px;border-radius:12px;font-weight:700;
   color:#fff;background:rgba(10,10,14,.82);border:1px solid rgba(255,255,255,.45);
-  text-shadow:0 1px 3px rgba(0,0,0,.9);font-size:15px;backdrop-filter:blur(2px)
+  text-shadow:0 1px 3px rgba(0,0,0,.9);font-size:16px;backdrop-filter:blur(2px)
 }
 .marker.revealed .label{opacity:1;transform:scale(1)}
 
-/* ふきだし（小） */
+/* Speech bubble */
 .bubble{position:absolute;transform:translate(-50%,-120%);background:rgba(0,0,0,.65);
   border:1px solid rgba(255,255,255,.2);padding:6px 8px;border-radius:12px;backdrop-filter:blur(4px);
   white-space:nowrap;font-size:13px;z-index:60}
 
-/* 右下ミニアクションバー（小さめ） */
+/* Mini action buttons bottom-right */
 .minitools{position:fixed;right:10px;bottom:0;z-index:70;display:flex;gap:8px;
   padding:8px 0 calc(10px + env(safe-area-inset-bottom));
   background:linear-gradient(180deg,transparent,rgba(0,0,0,.25))}
 .minitools button{height:42px;font-size:.95rem;border-radius:12px;padding:8px 12px}
 
-/* モーダル（到着のみ） */
+/* Modal (arrival only) */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:80}
 .sheet{width:min(720px,100%);background:#151520;border:1px solid rgba(255,255,255,.12);border-radius:18px 18px 0 0;padding:14px 14px 8px}
 .sheet h3{margin:6px 0 8px 0}
 .actionbar{position:sticky;bottom:0;display:flex;justify-content:center;padding:12px 6px}
 
-/* ========== Sprite（右向き固定 + 立体影 + とことこ + 寄り道） ========== */
+/* Sprite: always facing right + 3D-ish shadows */
 .sprite{
-  --sx: 1; /* 右向き固定 */
   position:absolute;left:6vw;
   width:min(22vw,160px);image-rendering:auto;z-index:40;
   filter:drop-shadow(0 18px 26px rgba(0,0,0,.45)) drop-shadow(0 2px 0 rgba(255,255,255,.15));
   animation:toko .9s ease-in-out infinite;transform-origin:50% 90%;
-  transform:scaleX(var(--sx)) translateZ(20px);
 }
 .sprite.paused{ animation-play-state: paused; }
 
-/* 地面の影（楕円） */
+/* Ground shadow under sprite */
 .shadow-ellipse{
   position:absolute;left:6vw;width:120px;height:26px;border-radius:999px;z-index:30;pointer-events:none;
   background:radial-gradient(50% 60% at 50% 50%, rgba(0,0,0,.45), rgba(0,0,0,.02) 70%, transparent 72%);
-  filter:blur(2px);transform:translateZ(0);opacity:.9;
+  filter:blur(2px);transform:translateX(-50%);opacity:.9;
 }
 
-/* とことこ */
+/* Walking keyframes */
 @keyframes toko{
-  0%   { transform: translateY(0) rotate(0deg) scaleX(var(--sx)) translateZ(20px); }
-  20%  { transform: translateY(-6px) rotate(1.2deg) scaleX(var(--sx)) translateZ(20px); }
-  40%  { transform: translateY(0) rotate(0deg) scaleX(var(--sx)) translateZ(20px); }
-  60%  { transform: translateY(-6px) rotate(-1.2deg) scaleX(var(--sx)) translateZ(20px); }
-  80%  { transform: translateY(0) rotate(0deg) scaleX(var(--sx)) translateZ(20px); }
-  100% { transform: translateY(-2px) rotate(.6deg) scaleX(var(--sx)) translateZ(20px); }
+  0%   { transform: translateY(0) rotate(0deg); }
+  20%  { transform: translateY(-6px) rotate(1.2deg); }
+  40%  { transform: translateY(0) rotate(0deg); }
+  60%  { transform: translateY(-6px) rotate(-1.2deg); }
+  80%  { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-2px) rotate(.6deg); }
 }
 
-/* 寄り道アイテム（花=テキスト絵文字、アサリ=画像） */
+/* Floating items */
 .float-item{position:absolute;z-index:65;transform:translate(-50%,-50%);user-select:none}
 .float-item.flower{font-size:40px;filter:drop-shadow(0 6px 12px rgba(0,0,0,.35))}
 .float-item.shell img{width:44px;height:auto;filter:drop-shadow(0 6px 12px rgba(0,0,0,.35))}
+
+/* Tiny error overlay (for quick debug on device) */
+.err{
+  position:fixed;left:0;right:0;bottom:0;z-index:9999;
+  background:#ff2d55;color:#fff;padding:8px 12px;font-size:12px;line-height:1.3;
+  font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap
+}
