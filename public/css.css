@@ -1,145 +1,65 @@
-/* ========= ベース ========= */
-:root{
-  --hud-pad: 8px;
-  --mini-gap: 6px;
-  --mini-size: 36px;
-}
+/* 画面全体の基本 */
+.friend.offpath { transform: translate(-50%, calc(-50% + -7vh)) scaleX(-1) rotate(-2deg); }
+@keyframes bob { 0%,100%{ transform: translate(-50%, -50%) scaleX(-1); } 50%{ transform: translate(-50%, calc(-50% + -1.4vh)) scaleX(-1); } }
 
-/* 3D表現を無効化（rotateY/perspective系の残りもまとめてOFF） */
-.y-tilt, .rotY, .tiltY, .scene, .camera, .world {
-  transform: none !important;
-  perspective: none !important;
-}
 
-/* ===== 時間帯ベース背景（朝／昼／夕） ===== */
-.bg-base{
-  position:fixed; inset:0; z-index:0;
-  pointer-events:none; transition:background .6s ease;
+/* 寄り道ポイント */
+.waypoints { position: absolute; inset: 0; pointer-events: none; }
+.wp { position: absolute; transform: translate(-50%, -50%); }
+.wp .dot {
+width: 10px; height: 10px; border-radius: 50%;
+background: radial-gradient(circle at 35% 35%, #fff, #f5b, #0000);
+box-shadow: 0 0 12px 4px rgba(255,100,200,.45);
+animation: dotPulse 1.2s ease-in-out infinite;
 }
-.bg-base.morning{
-  background:
-    radial-gradient(1000px 500px at 50% 10%, rgba(255,220,170,.55), transparent 60%),
-    linear-gradient(180deg,#FFE4BF 0%,#FFD3A1 40%,#FFF3E8 100%);
-}
-.bg-base.noon{
-  background:
-    radial-gradient(1000px 500px at 50% 10%, rgba(180,230,255,.45), transparent 60%),
-    linear-gradient(180deg,#BAE6FF 0%,#D7F2FF 40%,#F5FDFF 100%);
-}
-.bg-base.evening{
-  background:
-    radial-gradient(1000px 500px at 50% 10%, rgba(255,180,200,.45), transparent 60%),
-    linear-gradient(180deg,#FFD0DC 0%,#FFC0B5 40%,#FFE9E3 100%);
-}
+@keyframes dotPulse { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.25); } }
 
-/* ===== 幾何学デコ（四角・三角） ===== */
-.bg-decor{
-  position:fixed; inset:0; z-index:1;
-  pointer-events:none; overflow:hidden;
-}
-.bg-decor .shape{
-  position:absolute; opacity:.35; will-change:transform;
-  left: var(--x); top: var(--y);
-  animation: floatY var(--dur, 12s) linear infinite;
-  animation-delay: var(--delay, 0s);
-}
-.bg-decor .sq{
-  width: var(--s,18px); height: var(--s,18px);
-  background: var(--c,#fff);
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.06);
-}
-.bg-decor .tri{
-  width:0; height:0;
-  border-left: calc(var(--s,18px) * .5) solid transparent;
-  border-right: calc(var(--s,18px) * .5) solid transparent;
-  border-bottom: var(--s,18px) solid var(--c,#fff);
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,.06));
-}
-@keyframes floatY{
-  0%{ transform: translateY(0) }
-  50%{ transform: translateY(-10px) }
-  100%{ transform: translateY(0) }
-}
 
-/* ===== HUD（上部バッジ） ===== */
-.hud{
-  position:fixed; left:0; right:0; top:0; z-index:5;
-  display:flex; gap:8px; justify-content:center;
-  padding:var(--hud-pad); pointer-events:none;
+/* ラベル（暗め半透明＋縁取り） */
+.wp .label {
+margin-top: 8px; padding: 6px 10px; font-size: 12px; line-height: 1.2;
+color: #fff; background: rgba(0,0,0,.5);
+border: 1px solid rgba(255,255,255,.25); border-radius: 10px;
+backdrop-filter: blur(4px);
+box-shadow: 0 1px 8px rgba(0,0,0,.35);
+opacity: 0; transform: translateY(-6px);
+transition: opacity .25s ease, transform .25s ease;
+white-space: nowrap; pointer-events: none;
 }
-.hud .badge{
-  pointer-events:auto; font-size:12px; color:#fff;
-  background:rgba(0,0,0,.35); padding:4px 8px;
-  border-radius:999px; backdrop-filter: blur(6px);
-}
+.wp.reveal .label { opacity: 1; transform: translateY(0); }
+.wp.done .dot { filter: grayscale(1) brightness(.6); opacity: .6; box-shadow: none; }
 
-/* ===== ミニボタン（右下固定） ===== */
-.mini-btns{
-  position:fixed; right:10px;
-  bottom: calc(10px + env(safe-area-inset-bottom));
-  z-index:6; display:flex; gap:var(--mini-gap);
-}
-.mini-btns button{
-  width:var(--mini-size); height:var(--mini-size);
-  border:none; border-radius:12px;
-  background:rgba(0,0,0,.45); color:#fff;
-  font-size:10px; line-height:1.1;
-  display:flex; align-items:center; justify-content:center;
-  backdrop-filter: blur(6px);
-}
 
-/* ===== 道（中央よりやや下） ===== */
-.path{
-  position:fixed; left:5vw; right:5vw; bottom:22vh; z-index:2; height:2px;
-  background:linear-gradient(90deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.05) 100%);
-  border-radius:1px;
+/* アイコン（タイプ別） */
+.wp .icon { margin-top: 6px; display: grid; place-items: center; pointer-events: auto; }
+.wp .icon img { width: 36px; height: 36px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.wp .icon.flower { width: 34px; height: 34px; border-radius: 50%; background:
+radial-gradient(circle at 50% 50%, #ffb3c7 0 40%, transparent 41%),
+radial-gradient(circle at 75% 25%, #ffd8e4 0 33%, transparent 34%),
+radial-gradient(circle at 25% 25%, #ffd1ef 0 33%, transparent 34%),
+radial-gradient(circle at 75% 75%, #ffd1b8 0 33%, transparent 34%),
+radial-gradient(circle at 25% 75%, #ffe3a1 0 33%, transparent 34);
+box-shadow: 0 0 10px rgba(255,150,200,.55);
 }
+.wp .icon.flower::after { content: ""; width: 8px; height: 8px; background:#fff; border-radius: 50%; box-shadow: 0 0 6px rgba(255,255,255,.8); }
 
-/* ===== キャラクター（右向き基準・ボブ揺れ） ===== */
-#friend{
-  position:fixed; z-index:4;
-  width: min(16vh, 120px);
-  transform-origin:50% 85%;
-  animation: bob 1.8s ease-in-out infinite;
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,.18));
-}
-@keyframes bob{
-  0%,100%{ transform: translateY(0) }
-  50%{ transform: translateY(-3px) }
-}
-.face-left{ transform: scaleX(-1) }
 
-/* ===== 寄り道ラベル ===== */
-.poi-label{
-  position:absolute; z-index:3; transform:translate(-50%,-120%);
-  padding:6px 8px; font-size:12px; color:#fff;
-  background: rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.25);
-  border-radius:8px; backdrop-filter: blur(4px);
+/* ミニ操作（右下・寄り道中のみ） */
+.mini {
+position: fixed; right: calc(10px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+z-index: 12; display: flex; gap: 6px; background: rgba(0,0,0,.35);
+padding: 6px; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); backdrop-filter: blur(6px);
 }
+.mini.hidden { display: none; }
+.mini-btn { appearance: none; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08);
+color: #fff; padding: 6px 8px; border-radius: 10px; font-size: 12px; }
+.mini-btn:active { transform: translateY(1px); }
 
-/* ===== 画面下エラーバー ===== */
-.errorbar{
-  position:fixed; left:0; right:0; bottom:0; z-index:99;
-  background:#B00020; color:#fff; padding:4px 8px; font-size:12px;
-  display:none;
-}
 
-/* ===== キャラ選択（小さめサムネ） ===== */
-/* char.html などで同じCSSを読み込めばそのまま適用されます */
-.char-grid{
-  display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr));
-  gap:12px; padding:12px;
+/* エラーバー（下） */
+.errorbar {
+position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; min-height: 22px;
+background: #a00; color: #fff; font-size: 12px; padding: 3px 8px;
+transform: translateY(100%); transition: transform .25s ease;
 }
-.char-card{
-  background:rgba(255,255,255,.06);
-  border:1px solid rgba(0,0,0,.08);
-  border-radius:14px; padding:8px;
-  display:flex; flex-direction:column; align-items:center; gap:6px;
-}
-.char-card img{
-  width: clamp(72px, 12vw, 120px);
-  height:auto; display:block;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,.12));
-}
-.char-card .name{ font-size:12px; opacity:.9 }
+.errorbar.show { transform: translateY(0); }
