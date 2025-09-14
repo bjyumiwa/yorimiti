@@ -8,20 +8,25 @@
 </head>
 <body>
   <div id="game">
-    <div class="bg-grad"></div>
+    <div class="world" id="world">
+      <div class="layer bg-grad"></div>
+      <div class="layer bg-back"></div>
 
-    <div class="hud">
-      <div class="badges">
-        <span class="badge"><span data-t="hudStage">ステージ</span>: <b id="stageNum"></b></span>
-        <span class="badge"><span data-t="hudAttachment">愛着</span>: <b id="bondVal">0</b></span>
+      <div class="hud">
+        <div class="badges">
+          <span class="badge"><span data-t="hudStage">ステージ</span>: <b id="stageNum"></b></span>
+          <span class="badge"><span data-t="hudAttachment">愛着</span>: <b id="bondVal">0</b></span>
+        </div>
+        <div class="row"><button onclick="location.href='index.html'">≡</button></div>
       </div>
-      <div class="row"><button onclick="location.href='index.html'">≡</button></div>
-    </div>
 
-    <div class="track"></div>
-    <!-- 座標はJSで更新。縦位置はピクセルで制御して“道からふわっと外れる” -->
-    <img id="sprite" class="sprite face-right" alt="buddy" style="display:none;bottom:0px">
-    <div id="markers"></div>
+      <div class="track"></div>
+
+      <div id="markers" class="layer" style="transform:translateZ(10px)"></div>
+
+      <img id="sprite" class="sprite" alt="buddy" style="display:none;bottom:0px">
+      <div id="shadow" class="shadow-ellipse"></div>
+    </div>
   </div>
 
   <!-- 到着のみで使う軽いモーダル -->
@@ -46,16 +51,32 @@
       document.body.classList.add(cls);
     })();
 
-    // 画像パス（前提）
+    // 3Dパララックス（マウス/タッチで軽く傾く）
+    (function tilt(){
+      const game = document.getElementById('game');
+      function apply(xRatio,yRatio){
+        const ry = (xRatio-0.5)*-10; // -5~+5deg
+        const rx = 8 + (yRatio-0.5)*6; // 5~11deg
+        game.style.setProperty('--ry', ry.toFixed(2)+'deg');
+        game.style.setProperty('--rx', rx.toFixed(2)+'deg');
+      }
+      window.addEventListener('pointermove', e=>{
+        apply(e.clientX/window.innerWidth, e.clientY/window.innerHeight);
+      }, {passive:true});
+      // 初期
+      apply(.5,.5);
+    })();
+
+    // アセットパス
     const SPRITE_BASE = 'public/characters/';
     const ITEM_BASE   = 'public/items/';
     const CHAR_SPRITE = { blue:'blue_closed.png', green:'green_open.png', pink:'pink_closed.png', purple:'purple_closed.png' };
 
-    // ステージ（1シーン≒60s目安：前進＋寄り道で調整）
+    // ステージ（寄り道：近づくまで種類非表示。revealedでラベルを出す）
     // kind: 'flower' | 'shell' | 'generic'
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", events:[
-        {id:"flower", text:"お花がある。", x:.32, kind:"flower", dur:9000, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"flower", text:"お花がある。", icon:"🌸", x:.32, kind:"flower", dur:9000, delta:{guide:+2, watch:+1, ignore:-1}},
         {id:"cat",    text:"猫ちゃん…なでたいな", x:.56, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:2, place:"ショッピング街", dest:"図書館", events:[
@@ -66,7 +87,7 @@
         {id:"friend", text:"友だちが困ってる…", x:.45, kind:"generic", dur:8000, delta:{guide:+1, watch:+1, ignore:-2}},
       ]},
       {id:4, place:"海辺の遊歩道", dest:"灯台", events:[
-        {id:"shell", text:"あ、貝を拾おう。", x:.50, kind:"shell", dur:9000, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"shell", text:"あ、貝を拾おう。", icon:"🐚", x:.50, kind:"shell", dur:9000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:5, place:"故郷の町", dest:"思い出の場所", events:[
         {id:"photo", text:"昔の写真…", x:.52, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
@@ -89,6 +110,7 @@
     ];
 
     const sprite   = document.getElementById('sprite');
+    const shadowEl = document.getElementById('shadow');
     const markers  = document.getElementById('markers');
     const modal    = document.getElementById('modal');
     const stageNum = document.getElementById('stageNum');
@@ -100,7 +122,7 @@
     let attachment = Y_STATE.get('yorimichi.attachment',0);
     stageNum.textContent = stageIndex; bondVal.textContent = attachment;
 
-    // スプライト読込
+    // スプライト読込（右向き固定）
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
@@ -110,20 +132,32 @@
     }
     setSpriteByChar(char);
 
-    // 進行パラメータ（約60s目安：前進約45s + 寄り道分でトータル≒60s）
+    // 時間設計：1シーン≒60s（前進約45s + 寄り道で±）
     const BASE_SPEED_VW_PER_SEC = 1.8; // 88vw / 49s ≒ 1.8
     let px = 6; // vw
     let lastTs = performance.now();
 
-    // 縦座標（px）…ベース位置（道）と寄り道オフセット
+    // 縦座標（px）
     function baseBottomPx(){ return window.innerHeight*0.45 - 40; }
-    let bottomOffset = 0; // detour中は +60px 付近へ
+    let bottomOffset = 0; // detour中は +70px
+
     function applySpritePos(extraXvw=0){
-      sprite.style.left = (px + extraXvw) + 'vw';
-      sprite.style.bottom = (baseBottomPx() + bottomOffset) + 'px';
+      const left = (px + extraXvw);
+      const bottomPx = baseBottomPx() + bottomOffset;
+      sprite.style.left = left + 'vw';
+      sprite.style.bottom = bottomPx + 'px';
+      // 影（楕円）は足元に追従、寄り道中は小さく薄く
+      const elWidth = Math.min(window.innerWidth*0.18, 160);
+      shadowEl.style.left = left + 'vw';
+      shadowEl.style.bottom = (baseBottomPx() - 14) + 'px';
+      const k = Math.max(0.45, 1 - bottomOffset/160);
+      shadowEl.style.width = (elWidth*0.75*k) + 'px';
+      shadowEl.style.height = (26*k) + 'px';
+      shadowEl.style.opacity = (0.9*k).toFixed(2);
+      shadowEl.style.transform = 'translateZ(0) translateX(-50%)';
     }
 
-    // ステージセットアップ（マーカー）
+    // ステージセットアップ（最初は点だけ。ラベルは空で追加しておく）
     const stage = STAGES[stageIndex-1];
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
@@ -132,7 +166,10 @@
       m.className = 'marker';
       m.style.left = x+'vw';
       m.dataset.id = ev.id;
-      m.innerHTML = `<div class="dot"></div><div class="label">${ev.text}</div>`;
+      m.dataset.kind = ev.kind || 'generic';
+      m.dataset.text = ev.text || '';
+      m.dataset.icon = ev.icon || '';
+      m.innerHTML = `<div class="dot"></div><div class="label"></div>`;
       markers.appendChild(m);
     });
 
@@ -143,53 +180,83 @@
     let activeEvent = null;
     let scrollAccumulator = 0;
 
+    // 近づくと種類がわかる（ラベル表示）、もっと近いと発火
+    const REVEAL_DIST = 70;   // px
+    const TRIGGER_DIST = 26;  // px
+
+    function revealIfNear(){
+      const vw = window.innerWidth/100;
+      const r = sprite.getBoundingClientRect();
+      const sx = r.left + r.width*0.5;
+      document.querySelectorAll('.marker').forEach(m=>{
+        const mx = parseFloat(m.style.left)*vw;
+        const d = Math.abs(mx - sx);
+        if(d < REVEAL_DIST && !m.classList.contains('revealed')){
+          const kind = m.dataset.kind;
+          const icon = m.dataset.icon || (kind==='flower'?'🌸':kind==='shell'?'🐚':'');
+          const label = m.querySelector('.label');
+          label.textContent = icon ? `${icon} ${m.dataset.text}` : m.dataset.text;
+          m.classList.add('revealed');
+        }
+      });
+    }
+
+    function checkEventTrigger(){
+      if(detouring) return;
+      const vw = window.innerWidth/100;
+      const r = sprite.getBoundingClientRect();
+      const sx = r.left + r.width*0.5;
+      const near = Array.from(document.querySelectorAll('.marker')).find(m=>{
+        const mx = parseFloat(m.style.left)*vw;
+        return Math.abs(mx - sx) < TRIGGER_DIST;
+      });
+      if(near){
+        const ev = stage.events.find(e=>e.id===near.dataset.id);
+        startDetour(ev);
+        near.remove(); // 一度きり
+      }
+    }
+
     function startDetour(ev){
       detouring = true;
       activeEvent = ev;
       detourEndTime = performance.now() + (ev.dur||6000);
       bottomOffset = 70; // ふわっと道から上へ
       sprite.classList.remove('paused');
-      mini.style.display = 'flex'; // 小さいボタン
+      mini.style.display = 'flex';
       showBubble('…');
 
-      // アイテム配置（花かアサリ）
+      // アイテム（花=🌸、アサリ=画像）
       if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
       const r = sprite.getBoundingClientRect();
       detourItemEl = document.createElement('div');
       detourItemEl.className = 'float-item';
-      detourItemEl.style.left = (r.left + r.width*0.7) + 'px';
+      detourItemEl.style.left = (r.left + r.width*0.75) + 'px';
       detourItemEl.style.top  = (r.top - 10) + 'px';
 
       if(ev.kind==='flower'){
         detourItemEl.classList.add('flower');
         detourItemEl.textContent = '🌸';
-        detourItemEl.onclick = ()=> shortenDetour(0.5); // 50%短縮
+        detourItemEl.onclick = ()=> shortenDetour(0.5);
       }else if(ev.kind==='shell'){
         detourItemEl.classList.add('shell');
         detourItemEl.innerHTML = `<img src="${ITEM_BASE}asari3.png" alt="shell">`;
         detourItemEl.onclick = ()=>{ shortenDetour(0.5); detourItemEl.remove(); };
-      }else{
-        // generic はアイテム無し
       }
       document.body.appendChild(detourItemEl);
     }
-    function shortenDetour(rate){ // 残時間を割合で短縮
+    function shortenDetour(rate){
       const now = performance.now();
       const remain = Math.max(0, detourEndTime - now);
       detourEndTime = now + remain * (1-rate);
     }
-    function extendDetour(ms){
-      detourEndTime += ms;
-    }
+    function extendDetour(ms){ detourEndTime += ms; }
     function endDetour(){
-      detouring = false;
-      activeEvent = null;
-      bottomOffset = 0;
-      mini.style.display = 'none';
+      detouring = false; activeEvent = null; bottomOffset = 0; mini.style.display = 'none';
       if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
     }
 
-    // 小さいボタンの効き（導く=短縮 / 見守る=変化なし / 放置=延長）
+    // ミニボタン（小さく／下右）
     document.getElementById('btnGuide').onclick = ()=>{
       if(!detouring) return;
       attachment += (activeEvent?.delta?.guide||0);
@@ -213,36 +280,16 @@
     window.addEventListener('wheel', e=>{
       if(detouring){ shortenDetour( Math.min(1, Math.abs(e.deltaY)/600) ); }
     }, {passive:true});
-    let touchY=null;
+    let touchY=null, scrollAccumulator=0;
     window.addEventListener('touchstart', e=>{ if(e.touches[0]) touchY=e.touches[0].clientY; }, {passive:true});
     window.addEventListener('touchmove', e=>{
       if(detouring && e.touches[0] && touchY!=null){
-        const dy = touchY - e.touches[0].clientY; // 上へ引くと短縮
+        const dy = touchY - e.touches[0].clientY;
         scrollAccumulator += dy;
-        if(Math.abs(scrollAccumulator) > 40){
-          shortenDetour(0.25);
-          scrollAccumulator = 0;
-        }
+        if(Math.abs(scrollAccumulator) > 40){ shortenDetour(0.25); scrollAccumulator=0; }
       }
     }, {passive:true});
     window.addEventListener('touchend', ()=>{ touchY=null; }, {passive:true});
-
-    // 近接検知（寄り道中は発火しない）
-    function checkEventProximity(){
-      if(detouring) return;
-      const vw = window.innerWidth/100;
-      const r = sprite.getBoundingClientRect();
-      const sx = r.left + r.width*0.5;
-      const near = Array.from(document.querySelectorAll('.marker')).find(m=>{
-        const mx = parseFloat(m.style.left)*vw;
-        return Math.abs(mx - sx) < 30;
-      });
-      if(near){
-        const ev = stage.events.find(e=>e.id===near.dataset.id);
-        startDetour(ev);
-        near.remove(); // 一度きり
-      }
-    }
 
     // 到着UI（振り返り無し）
     function endStage(){
@@ -269,37 +316,31 @@
       setTimeout(()=>b.remove(), 1000);
     }
 
-    // メインループ（時間ベース）
+    // メインループ
     function step(ts){
-      const dt = (ts - lastTs) / 1000; // 秒
-      lastTs = ts;
+      const dt = (ts - lastTs) / 1000; lastTs = ts;
 
       if(detouring){
-        // ふわーっと外れて漂う（左右ゆらぎ）
         const sway = Math.sin(ts/400) * 1.2; // vw
         applySpritePos(sway);
         if(ts >= detourEndTime){ endDetour(); }
       }else{
-        // 前進（右へ）
         px += BASE_SPEED_VW_PER_SEC * dt;
         applySpritePos();
-        checkEventProximity();
+        revealIfNear();
+        checkEventTrigger();
       }
 
-      // ゴール
       if(px >= 94){ endStage(); return; }
       requestAnimationFrame(step);
     }
 
     function init(){
       localStorage.setItem('yorimichi.lastPage','game.html');
-      // 初期配置
       applySpritePos();
       requestAnimationFrame(step);
     }
     init();
-
-    // 画面サイズ変化でも縦位置を維持
     window.addEventListener('resize', ()=> applySpritePos(), {passive:true});
   </script>
 </body>
