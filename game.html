@@ -38,7 +38,6 @@
   <script src="public/js_i18n.js"></script>
   <script src="public/js_state.js"></script>
 
-  <!-- エラー帯 -->
   <script>
     (function(){
       window.addEventListener('error', e=>{
@@ -69,27 +68,23 @@
       document.body.classList.add(h<10?'time-morning':h<16?'time-noon':'time-evening');
     })();
 
-    /* マウスのみごく弱いチルト。タッチ端末では固定 */
-    (function tilt(){
-      if (!window.matchMedia || !matchMedia('(pointer:fine)').matches) return;
+    if (window.matchMedia && matchMedia('(pointer:fine)').matches){
       const game = document.getElementById('game');
-      function apply(xRatio){
-        const ry = (xRatio-0.5)*-6; // -3〜+3deg 程度
+      function applyTilt(xRatio){
+        const ry = (xRatio-0.5)*-6;
         game.style.setProperty('--ry', ry.toFixed(2)+'deg');
       }
       window.addEventListener('pointermove', e=>{
-        apply(e.clientX/window.innerWidth);
+        applyTilt(e.clientX/window.innerWidth);
       }, {passive:true});
-      apply(.5);
-    })();
+      applyTilt(.5);
+    }
 
-    /* アセット */
     const SPRITE_BASE = 'public/characters/';
     const ITEM_BASE   = 'public/items/';
     const CHAR_SPRITE = { blue:'blue_closed.png', green:'green_open.png', pink:'pink_closed.png', purple:'purple_closed.png' };
     const TRANSPARENT_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
 
-    /* 寄り道ポイント増量（花とアサリは短縮クリック可） */
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", events:[
         {id:"f1", text:"お花がある。", icon:"🌸", x:.18, kind:"flower", dur:8000, delta:{guide:+2, watch:+1, ignore:-1}},
@@ -146,7 +141,6 @@
       ]},
     ];
 
-    /* 参照 */
     const sprite   = document.getElementById('sprite');
     const shadowEl = document.getElementById('shadow');
     const markers  = document.getElementById('markers');
@@ -155,14 +149,11 @@
     const bondVal  = document.getElementById('bondVal');
     const mini     = document.getElementById('miniTools');
 
-    /* 状態 */
     const char = Y.get('yorimichi.character','pink');
     let stageIndex = Math.min(Math.max(1,Y.get('yorimichi.stage',1)), 10);
     let attachment = Y.get('yorimichi.attachment',0);
     stageNum.textContent = stageIndex; bondVal.textContent = attachment;
 
-    /* スプライト読込 */
-    const TRANSPARENT_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
@@ -172,11 +163,10 @@
     }
     setSpriteByChar(char);
 
-    /* 時間設計（≒60秒/シーン） */
-    const BASE_SPEED_VW_PER_SEC = 1.95; // マーカー増量に合わせ微調整
+    const BASE_SPEED_VW_PER_SEC = 1.95;
     let px = 6;
     let lastTs = performance.now();
-    let prevPx = px;   // 進行方向判定用
+    let prevPx = px;
 
     function baseBottomPx(){ return window.innerHeight*0.45 - 40; }
     let bottomOffset = 0;
@@ -195,7 +185,6 @@
       shadowEl.style.opacity = (0.9*k).toFixed(2);
     }
 
-    /* マーカー作成（最初は点のみ） */
     const stage = STAGES[stageIndex-1];
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
@@ -211,10 +200,9 @@
       markers.appendChild(m);
     });
 
-    /* 寄り道状態 */
     let detouring = false, detourEndTime = 0, detourItemEl = null, activeEvent = null;
 
-    const REVEAL_DIST = 78;   // 文字の見やすさ重視で少し遠め
+    const REVEAL_DIST = 78;
     const TRIGGER_DIST = 26;
 
     function revealIfNear(){
@@ -298,7 +286,6 @@
       if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
     }
 
-    /* ミニボタン */
     document.getElementById('btnGuide').onclick = ()=>{
       if(!detouring) return;
       attachment += (activeEvent?.delta?.guide||0);
@@ -318,7 +305,6 @@
       extendDetour(2500); showBubble('？');
     };
 
-    /* スクロール／スワイプで短縮 */
     let touchY=null, swipeSum=0;
     window.addEventListener('wheel', e=>{
       if(detouring){ shortenDetour( Math.min(1, Math.abs(e.deltaY)/600) ); }
@@ -335,7 +321,6 @@
     }, {passive:true});
     window.addEventListener('touchend', ()=>{ touchY=null; }, {passive:true});
 
-    /* 進行方向で向きを自動切替（左右どちらへ動いてもOK） */
     function updateFacing(){
       const v = px - prevPx;
       if (v > 0.02) { sprite.classList.add('face-right'); sprite.classList.remove('face-left'); }
@@ -343,7 +328,6 @@
       prevPx = px;
     }
 
-    /* 到着 */
     function endStage(){
       modal.style.display='flex';
       modal.innerHTML = `<div class="sheet" style="text-align:center">
@@ -357,14 +341,13 @@
       };
     }
 
-    /* ループ */
     function step(ts){
       const dt = (ts - lastTs) / 1000; lastTs = ts;
 
       if(detouring){
-        const sway = Math.sin(ts/400) * 1.2; // ふわっと横揺れ
+        const sway = Math.sin(ts/400) * 1.2;
         applySpritePos(sway);
-        updateFacing(); /* 寄り道中も向きを維持 */
+        updateFacing();
         if(ts >= detourEndTime){ endDetour(); }
       }else{
         px += BASE_SPEED_VW_PER_SEC * dt;
