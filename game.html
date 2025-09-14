@@ -19,11 +19,20 @@
     </div>
 
     <div class="track"></div>
-    <img id="sprite" class="sprite face-right" alt="buddy" style="display:none">
+    <!-- 座標はJSで更新。縦位置はピクセルで制御して“道からふわっと外れる” -->
+    <img id="sprite" class="sprite face-right" alt="buddy" style="display:none;bottom:0px">
     <div id="markers"></div>
   </div>
 
+  <!-- 到着のみで使う軽いモーダル -->
   <div id="modal" class="modal" style="display:none"></div>
+
+  <!-- 右下のミニ・アクションバー（小さめ） -->
+  <div class="minitools" id="miniTools" style="display:none">
+    <button id="btnGuide">導く</button>
+    <button id="btnWatch" class="flat">見守る</button>
+    <button id="btnIgnore" class="flat">放置</button>
+  </div>
 
   <script src="public/js_i18n.js"></script>
   <script src="public/js_state.js"></script>
@@ -37,49 +46,45 @@
       document.body.classList.add(cls);
     })();
 
-    // 画像パス（ご指定の配置）
+    // 画像パス（前提）
     const SPRITE_BASE = 'public/characters/';
-    const CHAR_SPRITE = {
-      blue:   'blue_closed.png',
-      green:  'green_open.png',
-      pink:   'pink_closed.png',
-      purple: 'purple_closed.png'
-    };
+    const ITEM_BASE   = 'public/items/';
+    const CHAR_SPRITE = { blue:'blue_closed.png', green:'green_open.png', pink:'pink_closed.png', purple:'purple_closed.png' };
 
-    // ステージ（振り返りなし）
+    // ステージ（1シーン≒60s目安：前進＋寄り道で調整）
+    // kind: 'flower' | 'shell' | 'generic'
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", events:[
-        {id:"flower", text:"花がきれい…写真撮りたいな", x:.32, delta:{guide:+2, watch:+1, ignore:-1}},
-        {id:"cat",    text:"猫ちゃん…なでたいな",        x:.56, delta:{guide:+2, watch:+1, ignore:-1}},
-        {id:"ice",    text:"アイス食べたい…",             x:.78, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"flower", text:"お花がある。", x:.32, kind:"flower", dur:9000, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"cat",    text:"猫ちゃん…なでたいな", x:.56, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:2, place:"ショッピング街", dest:"図書館", events:[
-        {id:"game", text:"ゲームセンター…少しだけ", x:.35, delta:{guide:+1, watch:0, ignore:-1}},
-        {id:"sale", text:"セールだ…見るだけなら",   x:.6,  delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"game", text:"ゲームセンター…少しだけ", x:.35, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"sale", text:"セールだ…見るだけなら",   x:.62, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
       ]},
       {id:3, place:"通学路", dest:"学校の門", events:[
-        {id:"friend", text:"友だちが困ってる…", x:.45, delta:{guide:+1, watch:+1, ignore:-2}},
+        {id:"friend", text:"友だちが困ってる…", x:.45, kind:"generic", dur:8000, delta:{guide:+1, watch:+1, ignore:-2}},
       ]},
       {id:4, place:"海辺の遊歩道", dest:"灯台", events:[
-        {id:"sea", text:"海で遊びたい…", x:.5, delta:{guide:+1, watch:+1, ignore:-1}},
+        {id:"shell", text:"あ、貝を拾おう。", x:.50, kind:"shell", dur:9000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:5, place:"故郷の町", dest:"思い出の場所", events:[
-        {id:"photo", text:"昔の写真…", x:.52, delta:{guide:+1, watch:+1, ignore:0}},
+        {id:"photo", text:"昔の写真…", x:.52, kind:"generic", dur:6000, delta:{guide:+1, watch:+1, ignore:0}},
       ]},
       {id:6, place:"病院周辺", dest:"お見舞い", events:[
-        {id:"wheel", text:"手伝った方が…", x:.5, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"wheel", text:"手伝った方が…", x:.50, kind:"generic", dur:7000, delta:{guide:+2, watch:+1, ignore:-1}},
       ]},
       {id:7, place:"分かれ道の街", dest:"約束の場所", events:[
-        {id:"shortcut", text:"近道…でも…", x:.5, delta:{guide:+1, watch:0, ignore:-1}},
+        {id:"shortcut", text:"近道…でも…", x:.50, kind:"generic", dur:6000, delta:{guide:+1, watch:0, ignore:-1}},
       ]},
       {id:8, place:"卒業式へ", dest:"式典会場", events:[
-        {id:"last", text:"最後の思い出…", x:.55, delta:{guide:0, watch:+2, ignore:-1}},
+        {id:"last", text:"最後の思い出…", x:.55, kind:"generic", dur:6000, delta:{guide:0, watch:+2, ignore:-1}},
       ]},
       {id:9, place:"夕暮れの河川敷", dest:"思い出のベンチ", events:[
-        {id:"risk", text:"危ないけど…", x:.5, delta:{guide:+1, watch:+1, ignore:-2}},
+        {id:"risk", text:"危ないけど…", x:.50, kind:"generic", dur:8000, delta:{guide:+1, watch:+1, ignore:-2}},
       ]},
       {id:10, place:"駅のプラットフォーム", dest:"旅立ちの電車", events:[
-        {id:"farewell", text:"本当に行くの…？", x:.5, delta:{guide:0, watch:+2, ignore:-1}},
+        {id:"farewell", text:"本当に行くの…？", x:.50, kind:"generic", dur:7000, delta:{guide:0, watch:+2, ignore:-1}},
       ]},
     ];
 
@@ -88,26 +93,38 @@
     const modal    = document.getElementById('modal');
     const stageNum = document.getElementById('stageNum');
     const bondVal  = document.getElementById('bondVal');
+    const mini     = document.getElementById('miniTools');
 
     const char = Y_STATE.get('yorimichi.character','pink');
     let stageIndex = Math.min(Math.max(1,Y_STATE.get('yorimichi.stage',1)), 10);
     let attachment = Y_STATE.get('yorimichi.attachment',0);
-    stageNum.textContent = stageIndex;
-    bondVal.textContent  = attachment;
+    stageNum.textContent = stageIndex; bondVal.textContent = attachment;
 
-    // スプライトを読み込んで表示。進行方向=右向き
+    // スプライト読込
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
-      img.onload  = ()=>{ sprite.src = url; sprite.style.display='block'; sprite.classList.add('face-right'); };
+      img.onload  = ()=>{ sprite.src = url; sprite.style.display='block'; };
       img.onerror = ()=>{ console.warn('Sprite not found:', url); };
       img.src = url;
     }
     setSpriteByChar(char);
 
-    const stage = STAGES[stageIndex-1];
+    // 進行パラメータ（約60s目安：前進約45s + 寄り道分でトータル≒60s）
+    const BASE_SPEED_VW_PER_SEC = 1.8; // 88vw / 49s ≒ 1.8
+    let px = 6; // vw
+    let lastTs = performance.now();
 
-    // イベント配置
+    // 縦座標（px）…ベース位置（道）と寄り道オフセット
+    function baseBottomPx(){ return window.innerHeight*0.45 - 40; }
+    let bottomOffset = 0; // detour中は +60px 付近へ
+    function applySpritePos(extraXvw=0){
+      sprite.style.left = (px + extraXvw) + 'vw';
+      sprite.style.bottom = (baseBottomPx() + bottomOffset) + 'px';
+    }
+
+    // ステージセットアップ（マーカー）
+    const stage = STAGES[stageIndex-1];
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
       const x = Math.floor(ev.x*100);
@@ -115,15 +132,131 @@
       m.className = 'marker';
       m.style.left = x+'vw';
       m.dataset.id = ev.id;
-      m.innerHTML = `<div class="dot"></div><div class="small">${ev.text}</div>`;
+      m.innerHTML = `<div class="dot"></div><div class="label">${ev.text}</div>`;
       markers.appendChild(m);
     });
 
-    // 進行（右へ）
-    let px = 6;
-    let speed = 0.065;
-    let paused = false;
-    let resolved = new Set();
+    // 寄り道状態
+    let detouring = false;
+    let detourEndTime = 0;
+    let detourItemEl = null;
+    let activeEvent = null;
+    let scrollAccumulator = 0;
+
+    function startDetour(ev){
+      detouring = true;
+      activeEvent = ev;
+      detourEndTime = performance.now() + (ev.dur||6000);
+      bottomOffset = 70; // ふわっと道から上へ
+      sprite.classList.remove('paused');
+      mini.style.display = 'flex'; // 小さいボタン
+      showBubble('…');
+
+      // アイテム配置（花かアサリ）
+      if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
+      const r = sprite.getBoundingClientRect();
+      detourItemEl = document.createElement('div');
+      detourItemEl.className = 'float-item';
+      detourItemEl.style.left = (r.left + r.width*0.7) + 'px';
+      detourItemEl.style.top  = (r.top - 10) + 'px';
+
+      if(ev.kind==='flower'){
+        detourItemEl.classList.add('flower');
+        detourItemEl.textContent = '🌸';
+        detourItemEl.onclick = ()=> shortenDetour(0.5); // 50%短縮
+      }else if(ev.kind==='shell'){
+        detourItemEl.classList.add('shell');
+        detourItemEl.innerHTML = `<img src="${ITEM_BASE}asari3.png" alt="shell">`;
+        detourItemEl.onclick = ()=>{ shortenDetour(0.5); detourItemEl.remove(); };
+      }else{
+        // generic はアイテム無し
+      }
+      document.body.appendChild(detourItemEl);
+    }
+    function shortenDetour(rate){ // 残時間を割合で短縮
+      const now = performance.now();
+      const remain = Math.max(0, detourEndTime - now);
+      detourEndTime = now + remain * (1-rate);
+    }
+    function extendDetour(ms){
+      detourEndTime += ms;
+    }
+    function endDetour(){
+      detouring = false;
+      activeEvent = null;
+      bottomOffset = 0;
+      mini.style.display = 'none';
+      if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
+    }
+
+    // 小さいボタンの効き（導く=短縮 / 見守る=変化なし / 放置=延長）
+    document.getElementById('btnGuide').onclick = ()=>{
+      if(!detouring) return;
+      attachment += (activeEvent?.delta?.guide||0);
+      bondVal.textContent = attachment; Y_STATE.set('yorimichi.attachment', attachment);
+      shortenDetour(0.6); showBubble('！');
+    };
+    document.getElementById('btnWatch').onclick = ()=>{
+      if(!detouring) return;
+      attachment += (activeEvent?.delta?.watch||0);
+      bondVal.textContent = attachment; Y_STATE.set('yorimichi.attachment', attachment);
+      showBubble('…');
+    };
+    document.getElementById('btnIgnore').onclick = ()=>{
+      if(!detouring) return;
+      attachment += (activeEvent?.delta?.ignore||0);
+      bondVal.textContent = attachment; Y_STATE.set('yorimichi.attachment', attachment);
+      extendDetour(2500); showBubble('？');
+    };
+
+    // スクロール/スワイプで寄り道短縮
+    window.addEventListener('wheel', e=>{
+      if(detouring){ shortenDetour( Math.min(1, Math.abs(e.deltaY)/600) ); }
+    }, {passive:true});
+    let touchY=null;
+    window.addEventListener('touchstart', e=>{ if(e.touches[0]) touchY=e.touches[0].clientY; }, {passive:true});
+    window.addEventListener('touchmove', e=>{
+      if(detouring && e.touches[0] && touchY!=null){
+        const dy = touchY - e.touches[0].clientY; // 上へ引くと短縮
+        scrollAccumulator += dy;
+        if(Math.abs(scrollAccumulator) > 40){
+          shortenDetour(0.25);
+          scrollAccumulator = 0;
+        }
+      }
+    }, {passive:true});
+    window.addEventListener('touchend', ()=>{ touchY=null; }, {passive:true});
+
+    // 近接検知（寄り道中は発火しない）
+    function checkEventProximity(){
+      if(detouring) return;
+      const vw = window.innerWidth/100;
+      const r = sprite.getBoundingClientRect();
+      const sx = r.left + r.width*0.5;
+      const near = Array.from(document.querySelectorAll('.marker')).find(m=>{
+        const mx = parseFloat(m.style.left)*vw;
+        return Math.abs(mx - sx) < 30;
+      });
+      if(near){
+        const ev = stage.events.find(e=>e.id===near.dataset.id);
+        startDetour(ev);
+        near.remove(); // 一度きり
+      }
+    }
+
+    // 到着UI（振り返り無し）
+    function endStage(){
+      modal.style.display='flex';
+      modal.innerHTML = `<div class="sheet" style="text-align:center">
+        <h3>到着！</h3>
+        <p class="small">${stage.place} → <b>${stage.dest}</b></p>
+        <div class="actionbar"><button class="primary" id="nextBtn">${stageIndex<10?'次へ':'メニューに戻る'}</button></div>
+      </div>`;
+      document.getElementById('nextBtn').onclick = ()=>{
+        if(stageIndex<10){ stageIndex++; Y_STATE.set('yorimichi.stage', stageIndex); location.reload(); }
+        else{ go('index.html'); }
+      };
+    }
 
     function showBubble(text){
       const b = document.createElement('div');
@@ -132,92 +265,42 @@
       document.body.appendChild(b);
       const r = sprite.getBoundingClientRect();
       b.style.left = (r.left + r.width*0.5) + 'px';
-      b.style.top  = (r.top - 6) + 'px';
-      setTimeout(()=>b.remove(), 1200);
+      b.style.top  = (r.top - 10) + 'px';
+      setTimeout(()=>b.remove(), 1000);
     }
 
-    // 下部アクションバー版のイベント表示
-    function openEvent(ev){
-      paused = true;
-      sprite.classList.add('paused');
-      modal.style.display='flex';
-      modal.innerHTML = `<div class="sheet">
-        <div class="sheet-body">
-          <h3>「${ev.text}」</h3>
-          <div class="small"><b>目的地</b>：${stage.dest}</div>
-        </div>
-        <div class="actionbar">
-          <button class="primary" id="aGuide">${t('guide')}</button>
-          <button id="aWatch">${t('watch')}</button>
-          <button class="flat" id="aIgnore">${t('ignore')}</button>
-        </div>
-      </div>`;
-      applyTexts();
-      document.getElementById('aGuide').onclick = ()=> decide('guide',ev);
-      document.getElementById('aWatch').onclick = ()=> decide('watch',ev);
-      document.getElementById('aIgnore').onclick = ()=> decide('ignore',ev);
-    }
+    // メインループ（時間ベース）
+    function step(ts){
+      const dt = (ts - lastTs) / 1000; // 秒
+      lastTs = ts;
 
-    function decide(kind, ev){
-      modal.style.display='none';
-      const d = ev.delta[kind] ?? 0;
-      attachment += d;
-      bondVal.textContent = attachment;
-      Y_STATE.set('yorimichi.attachment', attachment);
-      resolved.add(ev.id);
-      sprite.classList.remove('paused');
-      if(kind==='guide') showBubble('！'); else if(kind==='watch') showBubble('…'); else showBubble('？');
-      paused = false;
-    }
-
-    function endStage(){
-      paused = true;
-      sprite.classList.add('paused');
-      modal.style.display='flex';
-      modal.innerHTML = `<div class="sheet" style="text-align:center">
-        <div class="sheet-body">
-          <h3>到着！</h3>
-          <p class="small">${stage.place} → <b>${stage.dest}</b></p>
-        </div>
-        <div class="actionbar">
-          <button class="primary" id="nextBtn">${stageIndex<10?t('next'):t('toMenu')}</button>
-        </div>
-      </div>`;
-      document.getElementById('nextBtn').onclick = ()=>{
-        if(stageIndex<10){ stageIndex++; Y_STATE.set('yorimichi.stage', stageIndex); location.reload(); }
-        else{ go('index.html'); }
-      };
-    }
-
-    function step(){
-      if(!paused){
-        px += speed;
-        sprite.style.left = px + 'vw';
+      if(detouring){
+        // ふわーっと外れて漂う（左右ゆらぎ）
+        const sway = Math.sin(ts/400) * 1.2; // vw
+        applySpritePos(sway);
+        if(ts >= detourEndTime){ endDetour(); }
+      }else{
+        // 前進（右へ）
+        px += BASE_SPEED_VW_PER_SEC * dt;
+        applySpritePos();
+        checkEventProximity();
       }
 
-      if(!paused){
-        const vw = window.innerWidth/100;
-        const r = sprite.getBoundingClientRect();
-        const sx = r.left + r.width*0.5;
-        const near = Array.from(document.querySelectorAll('.marker')).find(m=>{
-          const mx = parseFloat(m.style.left)*vw;
-          return Math.abs(mx - sx) < 30 && !resolved.has(m.dataset.id);
-        });
-        if(near){
-          const ev = stage.events.find(e=>e.id===near.dataset.id);
-          openEvent(ev);
-        }
-      }
-
+      // ゴール
       if(px >= 94){ endStage(); return; }
       requestAnimationFrame(step);
     }
 
     function init(){
       localStorage.setItem('yorimichi.lastPage','game.html');
+      // 初期配置
+      applySpritePos();
       requestAnimationFrame(step);
     }
     init();
+
+    // 画面サイズ変化でも縦位置を維持
+    window.addEventListener('resize', ()=> applySpritePos(), {passive:true});
   </script>
 </body>
 </html>
