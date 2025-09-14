@@ -10,7 +10,6 @@
   <div id="game">
     <div class="world" id="world">
       <div class="layer bg-grad"></div>
-      <div class="layer bg-back"></div>
 
       <div class="hud">
         <div class="badges">
@@ -21,18 +20,15 @@
       </div>
 
       <div class="track"></div>
-
-      <div id="markers" class="layer" style="transform:translateZ(10px)"></div>
+      <div id="markers" class="layer"></div>
 
       <img id="sprite" class="sprite" alt="buddy" style="display:none;bottom:0px">
-      <div id="shadow" class="shadow-ellipse"></div>
+      <div id="shadow" class="shadow-ellipse" style="bottom:0px"></div>
     </div>
   </div>
 
-  <!-- 到着のみで使う軽いモーダル -->
   <div id="modal" class="modal" style="display:none"></div>
 
-  <!-- 右下のミニ・アクションバー（小さめ） -->
   <div class="minitools" id="miniTools" style="display:none">
     <button id="btnGuide">導く</button>
     <button id="btnWatch" class="flat">見守る</button>
@@ -42,41 +38,53 @@
   <script src="public/js_i18n.js"></script>
   <script src="public/js_state.js"></script>
   <script>
+    // ======= Quick error overlay (helps when blank screen) =======
+    (function(){
+      window.addEventListener('error', function(e){
+        const d=document.createElement('div'); d.className='err';
+        d.textContent='Error: '+(e.message||e.error||'unknown');
+        document.body.appendChild(d);
+      });
+      window.addEventListener('unhandledrejection', function(e){
+        const d=document.createElement('div'); d.className='err';
+        d.textContent='Promise rejection: '+(e.reason && e.reason.message ? e.reason.message : e.reason);
+        document.body.appendChild(d);
+      });
+    })();
+  </script>
+  <script>
     applyTexts();
 
-    // 背景：端末時刻でクラス付与（朝/昼/夕）
+    // Background time class
     (function setTimeBG(){
       const h = new Date().getHours();
       const cls = (h<10) ? 'time-morning' : (h<16) ? 'time-noon' : 'time-evening';
       document.body.classList.add(cls);
     })();
 
-    // 3Dパララックス（マウス/タッチで軽く傾く）
+    // Gentle 3D tilt (does nothing if pointer events unavailable)
     (function tilt(){
       const game = document.getElementById('game');
       function apply(xRatio,yRatio){
-        const ry = (xRatio-0.5)*-10; // -5~+5deg
-        const rx = 8 + (yRatio-0.5)*6; // 5~11deg
+        const ry = (xRatio-0.5)*-10;
+        const rx = 8 + (yRatio-0.5)*6;
         game.style.setProperty('--ry', ry.toFixed(2)+'deg');
         game.style.setProperty('--rx', rx.toFixed(2)+'deg');
       }
       window.addEventListener('pointermove', e=>{
         apply(e.clientX/window.innerWidth, e.clientY/window.innerHeight);
       }, {passive:true});
-      // 初期
       apply(.5,.5);
     })();
 
-    // アセットパス
     const SPRITE_BASE = 'public/characters/';
     const ITEM_BASE   = 'public/items/';
     const CHAR_SPRITE = { blue:'blue_closed.png', green:'green_open.png', pink:'pink_closed.png', purple:'purple_closed.png' };
 
-    // ステージ（寄り道：近づくまで種類非表示。revealedでラベルを出す）
-    // kind: 'flower' | 'shell' | 'generic'
+    // Stage data (labels revealed only when near)
     const STAGES = [
       {id:1, place:"公園の小道", dest:"ベンチ", events:[
-        {id:"flower", text:"お花がある。", icon:"🌸", x:.32, kind:"flower", dur:9000, delta:{guide:+2, watch:+1, ignore:-1}},
+        {id:"flower", text:"お花がある。",  icon:"🌸", x:.32, kind:"flower", dur:9000, delta:{guide:+2, watch:+1, ignore:-1}},
         {id:"cat",    text:"猫ちゃん…なでたいな", x:.56, kind:"generic", dur:7000, delta:{guide:+1, watch:+1, ignore:-1}},
       ]},
       {id:2, place:"ショッピング街", dest:"図書館", events:[
@@ -122,42 +130,40 @@
     let attachment = Y_STATE.get('yorimichi.attachment',0);
     stageNum.textContent = stageIndex; bondVal.textContent = attachment;
 
-    // スプライト読込（右向き固定）
+    // Safe sprite load with fallback transparent PNG
+    const TRANSPARENT_1PX = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
     function setSpriteByChar(c){
       const url = SPRITE_BASE + (CHAR_SPRITE[c] || CHAR_SPRITE.pink);
       const img = new Image();
       img.onload  = ()=>{ sprite.src = url; sprite.style.display='block'; };
-      img.onerror = ()=>{ console.warn('Sprite not found:', url); };
+      img.onerror = ()=>{ sprite.src = TRANSPARENT_1PX; sprite.style.display='block'; console.warn('Sprite not found:', url); };
       img.src = url;
     }
     setSpriteByChar(char);
 
-    // 時間設計：1シーン≒60s（前進約45s + 寄り道で±）
-    const BASE_SPEED_VW_PER_SEC = 1.8; // 88vw / 49s ≒ 1.8
-    let px = 6; // vw
+    // Motion params (≈60s/scene)
+    const BASE_SPEED_VW_PER_SEC = 1.8;
+    let px = 6;
     let lastTs = performance.now();
 
-    // 縦座標（px）
     function baseBottomPx(){ return window.innerHeight*0.45 - 40; }
-    let bottomOffset = 0; // detour中は +70px
+    let bottomOffset = 0;
 
     function applySpritePos(extraXvw=0){
       const left = (px + extraXvw);
       const bottomPx = baseBottomPx() + bottomOffset;
       sprite.style.left = left + 'vw';
       sprite.style.bottom = bottomPx + 'px';
-      // 影（楕円）は足元に追従、寄り道中は小さく薄く
-      const elWidth = Math.min(window.innerWidth*0.18, 160);
       shadowEl.style.left = left + 'vw';
       shadowEl.style.bottom = (baseBottomPx() - 14) + 'px';
+      const elWidth = Math.min(window.innerWidth*0.18, 160);
       const k = Math.max(0.45, 1 - bottomOffset/160);
       shadowEl.style.width = (elWidth*0.75*k) + 'px';
       shadowEl.style.height = (26*k) + 'px';
       shadowEl.style.opacity = (0.9*k).toFixed(2);
-      shadowEl.style.transform = 'translateZ(0) translateX(-50%)';
     }
 
-    // ステージセットアップ（最初は点だけ。ラベルは空で追加しておく）
+    // Build markers (initially no label; reveal near)
     const stage = STAGES[stageIndex-1];
     markers.innerHTML = '';
     stage.events.forEach(ev=>{
@@ -173,14 +179,10 @@
       markers.appendChild(m);
     });
 
-    // 寄り道状態
-    let detouring = false;
-    let detourEndTime = 0;
-    let detourItemEl = null;
-    let activeEvent = null;
-    let scrollAccumulator = 0;
+    // Detour state
+    let detouring = false, detourEndTime = 0, detourItemEl = null, activeEvent = null;
+    let touchY=null, scrollAccumulator=0;
 
-    // 近づくと種類がわかる（ラベル表示）、もっと近いと発火
     const REVEAL_DIST = 70;   // px
     const TRIGGER_DIST = 26;  // px
 
@@ -213,20 +215,29 @@
       if(near){
         const ev = stage.events.find(e=>e.id===near.dataset.id);
         startDetour(ev);
-        near.remove(); // 一度きり
+        near.remove();
       }
     }
 
+    function showBubble(text){
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.textContent = text;
+      document.body.appendChild(b);
+      const r = sprite.getBoundingClientRect();
+      b.style.left = (r.left + r.width*0.5) + 'px';
+      b.style.top  = (r.top - 10) + 'px';
+      setTimeout(()=>b.remove(), 1000);
+    }
+
     function startDetour(ev){
-      detouring = true;
-      activeEvent = ev;
+      detouring = true; activeEvent = ev;
       detourEndTime = performance.now() + (ev.dur||6000);
-      bottomOffset = 70; // ふわっと道から上へ
+      bottomOffset = 70;
       sprite.classList.remove('paused');
       mini.style.display = 'flex';
       showBubble('…');
 
-      // アイテム（花=🌸、アサリ=画像）
       if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
       const r = sprite.getBoundingClientRect();
       detourItemEl = document.createElement('div');
@@ -256,7 +267,7 @@
       if(detourItemEl){ detourItemEl.remove(); detourItemEl=null; }
     }
 
-    // ミニボタン（小さく／下右）
+    // Mini buttons
     document.getElementById('btnGuide').onclick = ()=>{
       if(!detouring) return;
       attachment += (activeEvent?.delta?.guide||0);
@@ -276,11 +287,10 @@
       extendDetour(2500); showBubble('？');
     };
 
-    // スクロール/スワイプで寄り道短縮
+    // Scroll / touch to shorten detour
     window.addEventListener('wheel', e=>{
       if(detouring){ shortenDetour( Math.min(1, Math.abs(e.deltaY)/600) ); }
     }, {passive:true});
-    let touchY=null, scrollAccumulator=0;
     window.addEventListener('touchstart', e=>{ if(e.touches[0]) touchY=e.touches[0].clientY; }, {passive:true});
     window.addEventListener('touchmove', e=>{
       if(detouring && e.touches[0] && touchY!=null){
@@ -291,7 +301,7 @@
     }, {passive:true});
     window.addEventListener('touchend', ()=>{ touchY=null; }, {passive:true});
 
-    // 到着UI（振り返り無し）
+    // Arrival
     function endStage(){
       modal.style.display='flex';
       modal.innerHTML = `<div class="sheet" style="text-align:center">
@@ -305,23 +315,12 @@
       };
     }
 
-    function showBubble(text){
-      const b = document.createElement('div');
-      b.className = 'bubble';
-      b.textContent = text;
-      document.body.appendChild(b);
-      const r = sprite.getBoundingClientRect();
-      b.style.left = (r.left + r.width*0.5) + 'px';
-      b.style.top  = (r.top - 10) + 'px';
-      setTimeout(()=>b.remove(), 1000);
-    }
-
-    // メインループ
+    // Loop
     function step(ts){
       const dt = (ts - lastTs) / 1000; lastTs = ts;
 
       if(detouring){
-        const sway = Math.sin(ts/400) * 1.2; // vw
+        const sway = Math.sin(ts/400) * 1.2;
         applySpritePos(sway);
         if(ts >= detourEndTime){ endDetour(); }
       }else{
@@ -336,11 +335,22 @@
     }
 
     function init(){
+      // Language texts
+      applyTexts();
+      // Time-based background
+      const h = new Date().getHours();
+      document.body.classList.add(h<10?'time-morning':h<16?'time-noon':'time-evening');
+
+      // State defaults
       localStorage.setItem('yorimichi.lastPage','game.html');
+
+      // Start loop
       applySpritePos();
       requestAnimationFrame(step);
     }
     init();
+
+    // Keep vertical pos on resize
     window.addEventListener('resize', ()=> applySpritePos(), {passive:true});
   </script>
 </body>
