@@ -1,123 +1,63 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Game</title>
-  <link rel="stylesheet" href="public/css.css">
-</head>
-<body>
-  <!-- 時間帯グラデ背景と幾何学デコ -->
-  <div class="bg-base" id="bgBase"></div>
-  <div class="bg-decor" id="bgDecor"></div>
+if (detourRemain <= 0) endDetour('natural');
+} else {
+// 左へ自動歩行
+const xvw = Number(friendEl.dataset.xvw);
+const nx = xvw - BASE_SPEED_VW_PER_SEC * dt;
+friendEl.dataset.xvw = String(nx);
+friendEl.style.left = `${nx}vw`;
+shadowEl.style.left = `${nx}vw`;
 
-  <!-- HUD（例） -->
-  <div class="hud" id="hud">
-    <div class="badge" id="stageBadge">Stage 1</div>
-    <div class="badge" id="attachBadge">♥︎ 0</div>
-  </div>
 
-  <!-- 道ライン -->
-  <div class="path" aria-hidden="true"></div>
+// ラベル/発火
+updateLabelsAndTriggers();
 
-  <!-- キャラ（右向き基準、進行方向で左右反転） -->
-  <img id="friend" src="public/characters/pink_closed.png" alt="friend">
 
-  <!-- ミニボタン（寄り道中のみ表示） -->
-  <div class="mini-btns" id="miniBtns" style="display:none">
-    <button id="btnGuide">導く</button>
-    <button id="btnWatch">見守る</button>
-    <button id="btnLeave">放置</button>
-  </div>
+// 到着
+if (nx <= GOAL_X_VW) {
+// 簡易：背景を更新して再配置（次の景色へ）。満足度+4。
+incSat(4);
+genGeoBackground();
+friendEl.dataset.xvw = String(START_X_VW);
+friendEl.style.left = `${START_X_VW}vw`;
+shadowEl.style.left = `${START_X_VW}vw`;
+// イベントも再利用（完了フラグを解除）
+stage.events.forEach(ev=>{ ev._done=false; ev._in=false; ev._el?.classList.remove('done','reveal'); });
+}
+}
 
-  <!-- 画面下エラーバー -->
-  <div class="errorbar" id="errorbar"></div>
 
-  <!-- 依存スクリプト（順番厳守） -->
-  <script src="public/js_i18n.js"></script>
-  <script src="public/js_state.js"></script>
+requestAnimationFrame(tick);
+}
 
-  <!-- メイン（既存ロジックの前に置いてOK） -->
-  <script type="module">
-  /* applyTexts 未定義でも落ちないフォールバック */
-  if (typeof window.applyTexts !== 'function') {
-    window.applyTexts = function(){};
-  }
 
-  /* 3Dフラグ（無効化済。CSS側で transform/perspective をOFF） */
-  document.body.classList.add('no-3d');
+// レイアウト初期化
+function initLayout(){
+// 道ライン位置
+roadEl.style.top = `${PATH_Y_VH}vh`;
+shadowEl.style.top = `calc(${PATH_Y_VH}vh + 0.6vh)`;
+friendEl.style.top = `${PATH_Y_VH}vh`;
+}
 
-  /* 時間帯クラス付与（朝/昼/夕） */
-  const bgBase = document.getElementById('bgBase');
-  function setTimeBandClass(d=new Date()){
-    const h = d.getHours();
-    let band = 'noon';
-    if (h >= 5 && h < 11) band = 'morning';
-    else if (h >= 11 && h < 17) band = 'noon';
-    else band = 'evening';
-    bgBase.classList.remove('morning','noon','evening');
-    bgBase.classList.add(band);
-    return band;
-  }
-  const band = setTimeBandClass();
 
-  /* 幾何学デコ（四角・三角）を少量生成 */
-  const PALETTES = {
-    morning: ['#FFD7A8','#FFC7CE','#FFF0B5','#BFE6FF','#E9F7FF'],
-    noon:    ['#BFE7FF','#C2F0E4','#FFF3B0','#FFD6E7','#E8F5FF'],
-    evening: ['#FFC7D9','#FFBFA8','#C7C5FF','#FFE1A8','#FCEBFF']
-  };
-  const bgDecor = document.getElementById('bgDecor');
-  function spawnDecor(count=18){
-    const colors = PALETTES[band] || PALETTES.noon;
-    const vw = Math.max(320, window.innerWidth);
-    const vh = Math.max(480, window.innerHeight);
-    for (let i=0;i<count;i++){
-      const isTri = Math.random() < 0.5;
-      const el = document.createElement('span');
-      el.className = 'shape ' + (isTri ? 'tri' : 'sq');
-      const size = Math.round(12 + Math.random()*18); // 12–30px
-      const x = Math.round(Math.random() * (vw-30)) + 'px';
-      const y = Math.round(Math.random() * (vh-30)) + 'px';
-      const dur = (10 + Math.random()*8).toFixed(1) + 's';
-      const delay = (-Math.random()*5).toFixed(1) + 's';
-      const color = colors[Math.floor(Math.random()*colors.length)];
-      el.style.setProperty('--s', size+'px');
-      el.style.setProperty('--x', x);
-      el.style.setProperty('--y', y);
-      el.style.setProperty('--dur', dur);
-      el.style.setProperty('--delay', delay);
-      el.style.setProperty('--c', color);
-      bgDecor.appendChild(el);
-    }
-  }
-  spawnDecor(18);
+// エラー表示
+function showError(msg){ errorbar.textContent = String(msg || ''); errorbar.classList.toggle('show', !!msg); }
+window.addEventListener('error', (e)=>{ showError(e.message || 'Error'); });
+window.addEventListener('unhandledrejection', (e)=>{ showError(e.reason?.message || 'Promise rejection'); });
 
-  /* 進行方向で左右反転。既存の移動ロジックから呼んでください */
-  const friend = document.getElementById('friend');
-  function faceByVelocity(vx){
-    if (vx > 0) friend.classList.remove('face-left');
-    else if (vx < 0) friend.classList.add('face-left');
-  }
-  // 例：faceByVelocity(currentVX);
 
-  /* 寄り道用のミニボタン表示切替（既存フラグから呼ぶ想定） */
-  function setDetourUI(visible){
-    document.getElementById('miniBtns').style.display = visible ? 'flex' : 'none';
-  }
-  // 例：setDetourUI(isDetouring);
-
-  /* エラー表示ユーティリティ（画面下バー） */
-  function showError(msg){
-    const el = document.getElementById('errorbar');
-    el.textContent = msg;
-    el.style.display = 'block';
-    setTimeout(()=>{ el.style.display='none'; }, 4000);
-  }
-
-  /* ここから下に、既存の STAGES / 自動歩行 / 寄り道トリガ 等のロジックを配置してください */
-  // （既存の変数名と衝突しないよう、上記は関数のみ。グローバル変数は未宣言です）
-
-  </script>
+// 起動
+try {
+applyTexts?.();
+genGeoBackground();
+renderSat();
+initFriend();
+initLayout();
+buildStage();
+requestAnimationFrame(tick);
+} catch (err) {
+console.error(err); showError(err.message || err);
+}
+</script>
 </body>
 </html>
