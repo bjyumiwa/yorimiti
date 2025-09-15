@@ -1,53 +1,56 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Yorimichi</title>
-  <link rel="stylesheet" href="public/css.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>寄り道 — Yorimichi</title>
+<link rel="stylesheet" href="styles.css" />
+<meta name="theme-color" content="#111" />
 </head>
 <body>
-  <div class="container">
-    <div class="card" style="text-align:center;max-width:720px">
-      <img src="public/assets/ui/sprout_purple.png" alt="sprout" style="width:120px;height:auto;opacity:.95">
-      <h1 style="margin:.4rem 0 0 0" data-t="title">寄り道 — Yorimichi</h1>
-      <p class="small" style="margin-top:6px" id="summary">
-        「寄り道」は、他者を世話したくなる気持ちの正体を、かわいい仲間と一緒に探る小さな旅です。
-      </p>
-      <div class="row lang-picker" id="langPick">
-        <button data-lang="ja">日本語</button>
-        <button data-lang="en">English</button>
-        <button data-lang="zh">中文</button>
-        <button data-lang="ko">한국어</button>
-      </div>
-      <div class="row">
-        <button class="primary" id="btnStart" data-t="start">スタート</button>
-        <button id="btnCont" data-t="continue">続きから</button>
-        <button class="flat" id="btnAbout" data-t="research">研究について</button>
-      </div>
-      <p class="small">© Yorimichi prototype</p>
-    </div>
-  </div>
+<div id="app" class="app">
+<!-- Top HUD -->
+<header id="hud" class="hud">
+<div class="hud-left">
+<button id="btnBack" class="btn ghost" aria-label="Back" hidden>⟵</button>
+<div class="title">YORIMICHI</div>
+</div>
+<div class="hud-right">
+<div class="meter">
+<img src="public/ui/heart.svg" alt="heart" />
+<div id="meterFill" class="fill" style="width:0%"></div>
+<span id="meterLabel">0</span>
+</div>
+<select id="lang" class="lang"></select>
+<button id="btnSettings" class="btn">⚙</button>
+</div>
+</header>
 
-  <script src="public/js_i18n.js"></script>
-  <script src="public/js_state.js"></script>
-  <script>
-    applyTexts();
 
-    const langPick = document.getElementById('langPick');
-    [...langPick.children].forEach(b=>{
-      if(b.dataset.lang===yGetLang()) b.classList.add('active');
-      b.onclick=()=>{
-        ySetLang(b.dataset.lang);
-        [...langPick.children].forEach(x=>x.classList.remove('active'));
-        b.classList.add('active');
-        applyTexts();
-      };
-    });
+<!-- Scene viewport -->
+<main id="viewport" class="viewport">
+<img id="bg" class="bg" alt="background" />
+<div id="stageOverlay" class="overlay"></div>
+<div id="char" class="char" aria-label="character" role="img"></div>
+</main>
 
-    document.getElementById('btnStart').onclick = ()=> go('char.html');
-    document.getElementById('btnCont').onclick = ()=> location.href = localStorage.getItem('yorimichi.lastPage') || 'char.html';
-    document.getElementById('btnAbout').onclick = ()=> alert('Care & Controlの間（あわい）を体験的に考えるための実験的作品です。匿名の選択データは、同意がある場合のみ研究に用いられます。');
-  </script>
+
+<!-- Dialogue / choices -->
+<section id="uiLayer" class="ui-layer">
+<div id="bubble" class="bubble" hidden>
+<div id="bubbleName" class="bubble-name"></div>
+<div id="bubbleText" class="bubble-text"></div>
+</div>
+<div id="choices" class="choices" hidden></div>
+<div id="sysMsg" class="sysmsg" hidden></div>
+</section>
+
+
+<!-- Menus -->
+<div id="menuRoot" class="menus"></div>
+</div>
+
+
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
