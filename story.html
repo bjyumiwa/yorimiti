@@ -119,4 +119,168 @@ const Gradients = {
     radial-gradient(900px 520px at 65% 10%, rgba(255,255,255,.35), transparent 60%),
     linear-gradient(180deg,#c6f1ff 0%,#8ee0ff 30%,#60b8ea 55%,#2e6fa3 100%)`,
   noon: () => `
-    linear-gradient(180deg,#9be0ff 0%,#6ec7f1 40%,#
+    linear-gradient(180deg,#9be0ff 0%,#6ec7f1 40%,#3da0d8 70%,#1d3a5b 100%)`,
+  shore: () => `
+    radial-gradient(800px 160px at 50% 82%, rgba(255,255,255,.35), transparent 60%),
+    linear-gradient(180deg,#7dd3fc 0%,#60a5fa 38%,#3b82f6 60%,#1e3a8a 100%)`,
+  dusk: () => `
+    radial-gradient(1000px 520px at 50% 15%, rgba(255,180,160,.45), transparent 58%),
+    linear-gradient(180deg,#ffb4a2 0%,#e07a8a 35%,#7c3a96 65%,#2b1644 100%)`,
+  sunset: () => `
+    radial-gradient(1200px 540px at 40% 8%, rgba(255,200,120,.55), transparent 60%),
+    linear-gradient(180deg,#ffd1a1 0%,#ff8e72 35%,#c45aa1 65%,#351d53 100%)`,
+  night: () => `
+    radial-gradient(700px 420px at 70% 15%, rgba(255,255,255,.18), transparent 55%),
+    linear-gradient(180deg,#0b1020 0%,#101830 45%,#0a1226 100%)`,
+  moon: () => `
+    radial-gradient(260px 260px at 78% 12%, rgba(255,255,220,.7), rgba(255,255,220,.05) 60%, transparent 61%),
+    linear-gradient(180deg,#0d1224 0%,#0f1a34 50%,#09101e 100%)`,
+  rain: () => `
+    linear-gradient(180deg,rgba(180,210,230,.6) 0%,rgba(120,150,170,.5) 40%,rgba(40,60,80,.75) 100%),
+    repeating-linear-gradient(120deg, rgba(255,255,255,.10) 0 2px, transparent 2px 6px)`,
+  aurora: () => `
+    radial-gradient(1000px 600px at 30% 10%, rgba(120,255,200,.25), transparent 60%),
+    radial-gradient(900px 500px at 70% 20%, rgba(120,180,255,.22), transparent 60%),
+    linear-gradient(180deg,#051125 0%,#0a1a36 60%,#040a18 100%)`
+};
+
+/* ========= 物語データ =========
+  s1〜s10 が本道。d1〜d5 が寄り道（各奇数シーンから分岐）。
+  detourから戻ると、対応する次の本道へ進む。
+*/
+const SCENES = {
+  s1:{ theme:"dawn",
+      name:{ja:"はじまりの波",en:"Waves at the Start"},
+      text:{ja:"朝の海。あなたは深呼吸をして、一歩目の音を聞く。",
+            en:"Morning sea. You breathe in and hear the sound of the very first step."},
+      next:"s2", detour:"d1"},
+  d1:{ theme:"shore",
+      name:{ja:"寄り道①—砂に描いた地図",en:"Detour 1 — A Map on Sand"},
+      text:{ja:"指で線を引くと、子どもの頃の道筋が浮かぶ。どこから来て、どこへ向かう？",
+            en:"You draw a line on the sand. A childhood route appears. Where did you come from, where to now?"},
+      returnTo:"s2"},
+  s2:{ theme:"morning",
+      name:{ja:"薄光の問い",en:"Question in Pale Light"},
+      text:{ja:"海面に映る自分は、少しだけ他人に見える。", en:"Your reflection looks a little like someone else."},
+      next:"s3"},
+  s3:{ theme:"noon",
+      name:{ja:"真昼の沈黙",en:"Noon Silence"},
+      text:{ja:"言葉の代わりに、影が短くなる。", en:"Instead of words, shadows grow short."},
+      next:"s4", detour:"d2"},
+  d2:{ theme:"rain",
+      name:{ja:"寄り道②—通り雨の下で",en:"Detour 2 — Under a Passing Shower"},
+      text:{ja:"濡れることを恐れなければ、足取りは軽くなる。", en:"If you don't fear getting wet, your steps lighten."},
+      returnTo:"s4"},
+  s4:{ theme:"shore",
+      name:{ja:"遠浅の記憶",en:"Shallow Memories"},
+      text:{ja:"ひたひた、と繰り返しが拍を刻む。", en:"Lapping waves mark the beat of repetition."},
+      next:"s5"},
+  s5:{ theme:"dusk",
+      name:{ja:"夕凪の視線",en:"Gaze of the Dusk Calm"},
+      text:{ja:"今日のあなたは、どんな色だった？", en:"What color were you today?"},
+      next:"s6", detour:"d3"},
+  d3:{ theme:"aurora",
+      name:{ja:"寄り道③—空の糸",en:"Detour 3 — Threads in the Sky"},
+      text:{ja:"目に見えない糸が、まだ見ぬ選択肢を揺らす。", en:"Invisible threads shake unseen choices."},
+      returnTo:"s6"},
+  s6:{ theme:"sunset",
+      name:{ja:"残照の約束",en:"Afterglow Promise"},
+      text:{ja:"約束は声よりも、体温で覚えている。", en:"You remember promises more by warmth than words."},
+      next:"s7"},
+  s7:{ theme:"night",
+      name:{ja:"群青の間",en:"Room of Ultramarine"},
+      text:{ja:"暗さは恐れではなく、余白だ。", en:"Darkness is not fear, but margin."},
+      next:"s8", detour:"d4"},
+  d4:{ theme:"moon",
+      name:{ja:"寄り道④—月の読書",en:"Detour 4 — Reading by the Moon"},
+      text:{ja:"ページをめくるたび、過去形のあなたが小さく手を振る。", en:"Each page turns; your past self waves quietly."},
+      returnTo:"s8"},
+  s8:{ theme:"noon",
+      name:{ja:"静かな合流",en:"Quiet Confluence"},
+      text:{ja:"別れた道が、何事もなかったように並ぶ。", en:"Split paths line up as if nothing happened."},
+      next:"s9"},
+  s9:{ theme:"dusk",
+      name:{ja:"寄せては返す想い",en:"Feelings that Ebb and Flow"},
+      text:{ja:"たどり着けなかった答えは、今日の余韻になった。", en:"Answers you missed become today's aftertaste."},
+      next:"s10", detour:"d5"},
+  d5:{ theme:"rain",
+      name:{ja:"寄り道⑤—雨上がりの匂い",en:"Detour 5 — Scent after Rain"},
+      text:{ja:"深呼吸。まだ続きがある。", en:"Deep breath. There is still more."},
+      returnTo:"s10"},
+  s10:{ theme:"dawn",
+      name:{ja:"明日の入口",en:"Door to Tomorrow"},
+      text:{ja:"ここで終えることも、もう一周することもできる。", en:"You can end here—or go for another round."},
+      next:null
+  }
+};
+
+/* ========= 状態 ========= */
+let current = localStorage.getItem(LS.storyScene) || "s1";
+let lang = localStorage.getItem(LS.lang) || ((navigator.language||'ja').startsWith('ja')?'ja':'en');
+$("#langSelect").value = lang;
+
+/* ========= 画面描画 ========= */
+function setGradient(themeKey){
+  const make = Gradients[themeKey] || Gradients.noon;
+  bg.style.background = make();
+}
+function t(key){ return I18N[lang][key]; }
+function setLang(newLang){
+  lang = newLang; localStorage.setItem(LS.lang, lang);
+  $("#appTitle").textContent = t("appTitle");
+  $("#langLabel").textContent = t("lang");
+  render();
+}
+function render(){
+  const sc = SCENES[current];
+  if(!sc) return;
+  localStorage.setItem(LS.storyScene, current);
+
+  setGradient(sc.theme);
+  $("#sceneName").textContent = sc.name[lang];
+  $("#sceneText").textContent  = sc.text[lang];
+
+  // index表示
+  const idx = Object.keys(SCENES).filter(id=>id.startsWith('s')).indexOf(current)+1;
+  $("#sceneIdx").textContent = current.startsWith('s') ? `Scene ${String(idx).padStart(2,'0')}/10` : "Detour";
+
+  // 選択肢
+  const box = $("#choices"); box.innerHTML="";
+  if(sc.detour){
+    const btnD = document.createElement("button");
+    btnD.className="secondary"; btnD.textContent=t("detour");
+    btnD.onclick=()=>{ current=sc.detour; render(); };
+    box.appendChild(btnD);
+  }
+  if(sc.next){
+    const btnN = document.createElement("button");
+    btnN.className="primary"; btnN.textContent= current==="s10" ? t("end") : t("next");
+    btnN.onclick=()=>{ current=sc.next; render(); };
+    box.appendChild(btnN);
+  }
+  if(sc.returnTo){
+    const btnB = document.createElement("button");
+    btnB.className="ghost"; btnB.textContent=t("back");
+    btnB.onclick=()=>{ current=sc.returnTo; render(); };
+    box.appendChild(btnB);
+  }
+
+  // 再開表示
+  $("#resume").textContent = I18N[lang].resumed(current);
+}
+
+/* ========= 入力 ========= */
+window.addEventListener("keydown",(e)=>{
+  const sc = SCENES[current];
+  if(e.key==="Enter" && sc && sc.next){ current=sc.next; render(); }
+  if((e.key==="d"||e.key==="D") && sc && sc.detour){ current=sc.detour; render(); }
+});
+
+/* ========= 初期化 ========= */
+$("#langSelect").addEventListener("change",e=>setLang(e.target.value));
+$("#appTitle").textContent = t("appTitle");
+$("#langLabel").textContent = t("lang");
+render();
+</script>
+</body>
+</html>
