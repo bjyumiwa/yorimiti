@@ -3,54 +3,201 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>寄り道 — Yorimichi</title>
-<link rel="stylesheet" href="styles.css" />
-<meta name="theme-color" content="#111" />
+<title>寄り道 / Yorimichi</title>
+<style>
+  :root{
+    --fg:#fff;--muted:#cbd5e1;--glass:rgba(0,0,0,.35);
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#000;color:var(--fg);font-family:system-ui,"Noto Sans JP",sans-serif}
+  /* 朝焼けグラデ + 砂浜 */
+  .bg{position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(1200px 600px at 50% 10%, rgba(255,220,160,.45), transparent 55%),
+      linear-gradient(180deg,#87ceeb 0%,#98d8e8 30%,#468faf 55%,#2c5473 60%,#1f2a44 100%);
+  }
+  .sand{position:fixed;left:0;right:0;bottom:0;height:36vh;
+    background:
+      radial-gradient(800px 120px at 60% 20%, rgba(255,255,255,.18), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.18)),
+      linear-gradient(0deg,#e7c79a 0%,#d9b382 35%,#b78f62 100%);
+    clip-path:ellipse(120% 55% at 50% 100%);
+    filter:blur(0.2px)
+  }
+
+  /* レイアウト */
+  .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+  .panel{width:min(100%,920px)}
+  .header{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px
+  }
+  .title{font-weight:700;letter-spacing:.06em;font-size:clamp(18px,2.2vw,22px);opacity:.95}
+  .lang{
+    display:flex;gap:8px;align-items:center;background:var(--glass);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:6px 8px
+  }
+  .lang select{appearance:none;background:transparent;border:none;color:var(--fg);font:inherit;padding:4px 6px}
+  .lang select:focus{outline:2px solid rgba(255,255,255,.35);outline-offset:2px;border-radius:6px}
+
+  /* カード */
+  .card{
+    background:var(--glass);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px;box-shadow:var(--shadow)
+  }
+
+  /* キャラ列 */
+  .chars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:8px 0 18px}
+  .char{display:grid;place-items:center;padding:8px;aspect-ratio:1;border-radius:16px;
+        background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
+  .char img{width:100%;max-width:160px;image-rendering:auto;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35))}
+  @media (max-width:720px){ .chars{grid-template-columns:repeat(2,1fr)} .char img{max-width:140px} }
+
+  /* ふわふわ */
+  @keyframes floatY{0%{transform:translateY(0)}50%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+  .char:nth-child(1){animation:floatY 5.2s ease-in-out infinite}
+  .char:nth-child(2){animation:floatY 5.6s ease-in-out infinite .1s}
+  .char:nth-child(3){animation:floatY 5.0s ease-in-out infinite .2s}
+  .char:nth-child(4){animation:floatY 5.8s ease-in-out infinite .3s}
+  @media (prefers-reduced-motion:reduce){.char{animation:none}}
+
+  /* ボタン */
+  .actions{display:flex;flex-wrap:wrap;gap:12px}
+  button{
+    cursor:pointer;border:none;border-radius:14px;padding:14px 18px;
+    font-weight:700;letter-spacing:.04em;background:#2563eb;color:#fff;box-shadow:var(--shadow);
+    transition:transform .06s ease,filter .2s ease,opacity .2s
+  }
+  button:hover{transform:translateY(-1px)}
+  .secondary{background:#0ea5e9}
+  .ghost{background:transparent;border:1px solid rgba(255,255,255,.22)}
+  .disabled,button:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.4)}
+  .note{margin-top:6px;color:var(--muted);font-size:.92rem}
+
+  /* フッター */
+  .footer{margin-top:14px;color:var(--muted);font-size:.9rem}
+</style>
 </head>
 <body>
-<div id="app" class="app">
-<!-- Top HUD -->
-<header id="hud" class="hud">
-<div class="hud-left">
-<button id="btnBack" class="btn ghost" aria-label="Back" hidden>⟵</button>
-<div class="title">YORIMICHI</div>
-</div>
-<div class="hud-right">
-<div class="meter">
-<img src="public/ui/heart.svg" alt="heart" />
-<div id="meterFill" class="fill" style="width:0%"></div>
-<span id="meterLabel">0</span>
-</div>
-<select id="lang" class="lang"></select>
-<button id="btnSettings" class="btn">⚙</button>
-</div>
-</header>
+<div class="bg"></div><div class="sand"></div>
 
+<div class="wrap">
+  <div class="panel">
+    <div class="header">
+      <div class="title" id="appTitle">寄り道</div>
+      <div class="lang" aria-label="language switch">
+        <span id="langLabel" style="opacity:.8">言語</span>
+        <select id="langSelect" title="Language">
+          <option value="ja">日本語</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </div>
 
-<!-- Scene viewport -->
-<main id="viewport" class="viewport">
-<img id="bg" class="bg" alt="background" />
-<div id="stageOverlay" class="overlay"></div>
-<div id="char" class="char" aria-label="character" role="img"></div>
-</main>
+    <div class="card">
+      <!-- キャラ見本（飾り。クリックで何もしません） -->
+      <div class="chars" aria-hidden="true">
+        <div class="char"><img src="public/char/purple/calm.png" alt=""></div>
+        <div class="char"><img src="public/char/blue/joy.png"   alt=""></div>
+        <div class="char"><img src="public/char/green/joy.png"  alt=""></div>
+        <div class="char"><img src="public/char/pink/joy.png"   alt=""></div>
+      </div>
 
+      <!-- 行動ボタン -->
+      <div class="actions">
+        <button id="startBtn" class="primary" data-i18n="start"></button>
+        <button id="contBtn"  class="secondary" data-i18n="continue"></button>
+        <button id="aboutBtn" class="ghost" data-i18n="about"></button>
+      </div>
+      <div class="note" id="contNote"></div>
+    </div>
 
-<!-- Dialogue / choices -->
-<section id="uiLayer" class="ui-layer">
-<div id="bubble" class="bubble" hidden>
-<div id="bubbleName" class="bubble-name"></div>
-<div id="bubbleText" class="bubble-text"></div>
-</div>
-<div id="choices" class="choices" hidden></div>
-<div id="sysMsg" class="sysmsg" hidden></div>
-</section>
-
-
-<!-- Menus -->
-<div id="menuRoot" class="menus"></div>
+    <div class="footer">© Yorimichi Project</div>
+  </div>
 </div>
 
+<script>
+/* =======================
+   シンプル i18n
+   ======================= */
+const I18N = {
+  ja:{
+    appTitle:"寄り道",
+    lang:"言語",
+    start:"スタート",
+    continue:"続きから",
+    about:"研究について",
+    noSave:"続きの記録がありません。",
+    resumeFrom:(p)=>`最後に開いたページ：${p}`
+  },
+  en:{
+    appTitle:"Yorimichi",
+    lang:"Language",
+    start:"Start",
+    continue:"Continue",
+    about:"About",
+    noSave:"No saved progress yet.",
+    resumeFrom:(p)=>`Last opened page: ${p}`
+  }
+};
 
-<script type="module" src="js/main.js"></script>
+const LS_KEYS = {
+  lang: "who_lang",
+  last: "who_last_page"   // 例: "asari.html" や "collection.html"
+};
+const $ = (q)=>document.querySelector(q);
+const $$ = (q)=>document.querySelectorAll(q);
+
+function getLang(){
+  return localStorage.getItem(LS_KEYS.lang) || (navigator.language||'ja').startsWith('ja') ? 'ja' : 'en';
+}
+function setLang(lang){
+  localStorage.setItem(LS_KEYS.lang, lang);
+  const t = I18N[lang];
+  $("#appTitle").textContent = t.appTitle;
+  $("#langLabel").textContent = t.lang;
+  $$("#startBtn,[data-i18n=start]").forEach(n=>n.textContent=t.start);
+  $$("#contBtn,[data-i18n=continue]").forEach(n=>n.textContent=t.continue);
+  $$("#aboutBtn,[data-i18n=about]").forEach(n=>n.textContent=t.about);
+
+  // 続きからの表示
+  const last = localStorage.getItem(LS_KEYS.last);
+  const contBtn = $("#contBtn");
+  const note = $("#contNote");
+  if(last){
+    contBtn.disabled = false;
+    contBtn.classList.remove("disabled");
+    note.textContent = t.resumeFrom(last);
+  }else{
+    contBtn.disabled = true;
+    contBtn.classList.add("disabled");
+    note.textContent = t.noSave;
+  }
+}
+
+function go(href){ window.location.href = href; }
+
+window.addEventListener("DOMContentLoaded", () => {
+  // 言語初期化
+  const initLang = localStorage.getItem(LS_KEYS.lang) || (navigator.language||'ja').startsWith('ja') ? 'ja' : 'en';
+  $("#langSelect").value = initLang;
+  setLang(initLang);
+
+  // ハンドラ
+  $("#langSelect").addEventListener("change", e => setLang(e.target.value));
+  $("#startBtn").addEventListener("click", () => go("char.html"));      // ここを asari.html に変えれば浜へ直行もOK
+  $("#aboutBtn").addEventListener("click", () => go("about.html"));
+
+  $("#contBtn").addEventListener("click", () => {
+    const last = localStorage.getItem(LS_KEYS.last);
+    if(last){ go(last); }
+  });
+});
+</script>
+
+<!--
+ 他ページ側で「続きから」を機能させる1行（各ページの <script> に入れてください）
+ localStorage.setItem('who_last_page', location.pathname.split('/').pop() || 'index.html');
+-->
 </body>
 </html>
