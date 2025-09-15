@@ -1,0 +1,57 @@
+export const LANGS=[
+ja:{
+menu_title:"寄り道 — 哲学的アドベンチャー",
+start:"はじめる", cont:"つづきから", about:"研究について", settings:"設定",
+pick_char:"キャラクターを選んでください",
+attach:"愛着度",
+help:"助ける", watch:"見守る", ignore:"放置",
+proceed:"進む", back:"もどる", ok:"OK", cancel:"キャンセル",
+stage_clear:"ステージクリア",
+ending_title:"エンディング",
+export:"CSVエクスポート",
+consent_note:"匿名データ収集に協力しますか？（任意）",
+yes:"はい", no:"いいえ",
+},
+en:{
+menu_title:"Yorimichi — A Philosophical Adventure",
+start:"Start", cont:"Continue", about:"About", settings:"Settings",
+pick_char:"Pick your companion",
+attach:"Attachment",
+help:"Help", watch:"Watch", ignore:"Ignore",
+proceed:"Proceed", back:"Back", ok:"OK", cancel:"Cancel",
+stage_clear:"Stage Clear",
+ending_title:"Ending",
+export:"Export CSV",
+consent_note:"Allow anonymous research data? (optional)",
+yes:"Yes", no:"No",
+},
+zh:{
+menu_title:"绕路 — 哲学冒险",
+start:"开始", cont:"继续", about:"关于研究", settings:"设置",
+pick_char:"请选择角色",
+attach:"依恋度",
+help:"帮助", watch:"守望", ignore:"放任",
+proceed:"前进", back:"返回", ok:"确定", cancel:"取消",
+stage_clear:"通关",
+ending_title:"结局",
+export:"导出CSV",
+consent_note:"允许匿名研究数据吗？（可选）",
+yes:"是", no:"否",
+},
+ko:{
+menu_title:"우회 — 철학 어드벤처",
+start:"시작", cont:"이어하기", about:"연구 소개", settings:"설정",
+pick_char:"동반자를 선택하세요",
+attach:"애착도",
+help:"도움", watch:"지켜보기", ignore:"방임",
+proceed:"진행", back:"뒤로", ok:"확인", cancel:"취소",
+stage_clear:"스테이지 클리어",
+ending_title:"엔딩",
+export:"CSV 내보내기",
+consent_note:"익명 연구 데이터 허용? (선택)",
+yes:"예", no:"아니오",
+}
+};
+
+
+export function t(key,lang){return (STR[lang]&&STR[lang][key])||STR.ja[key]||key}
