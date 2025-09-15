@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Yorimichi — Story</title>
+<style>
+  :root{
+    --fg:#f8fafc;--muted:#cbd5e1;--glass:rgba(0,0,0,.35);
+    --bd:rgba(255,255,255,.14);--shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:#000;color:var(--fg);font-family:system-ui,"Noto Sans JP",sans-serif}
+  .bg{position:fixed;inset:0;z-index:-2;background:#000;transition:background 900ms ease}
+  .fx{position:fixed;inset:0;z-index:-1;pointer-events:none}
+  /* うっすら粒子 */
+  .fx::before{
+    content:"";position:absolute;inset:0;opacity:.12;
+    background-image:radial-gradient(#fff 1px,transparent 1px);
+    background-size:2px 2px;mix-blend-mode:overlay;filter:contrast(120%) brightness(120%);
+  }
+  .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+  .frame{
+    width:min(100%,900px);
+    background:var(--glass);backdrop-filter:blur(10px);
+    border:1px solid var(--bd);border-radius:18px;padding:18px;box-shadow:var(--shadow)
+  }
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+  .title{font-weight:800;letter-spacing:.06em;font-size:clamp(18px,2.2vw,22px)}
+  .lang{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.08);border:1px solid var(--bd);border-radius:999px;padding:6px 8px}
+  .lang select{appearance:none;background:transparent;border:none;color:var(--fg);font:inherit;padding:2px 4px}
+  .sceneHead{display:flex;justify-content:space-between;align-items:end;margin:6px 2px 10px}
+  .sceneName{font-weight:700;opacity:.9}
+  .sceneIdx{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .text{line-height:1.9;font-size:clamp(16px,2.2vw,18px);white-space:pre-wrap}
+  .choices{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  button{cursor:pointer;border:none;border-radius:12px;padding:12px 16px;font-weight:700;letter-spacing:.04em;box-shadow:var(--shadow);transition:transform .06s ease}
+  button:hover{transform:translateY(-1px)}
+  .primary{background:#2563eb;color:#fff}
+  .secondary{background:#0ea5e9;color:#fff}
+  .ghost{background:transparent;border:1px solid var(--bd);color:#fff}
+  .muted{color:var(--muted)}
+  .footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;color:var(--muted);font-size:.9rem}
+  @media (prefers-reduced-motion:reduce){
+    .bg{transition:none}
+    button{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<div class="fx"></div>
+
+<div class="wrap">
+  <div class="frame">
+    <div class="top">
+      <div class="title" id="appTitle">寄り道</div>
+      <div class="lang"><span id="langLabel" style="opacity:.8">言語</span>
+        <select id="langSelect"><option value="ja">日本語</option><option value="en">English</option></select>
+      </div>
+    </div>
+
+    <div class="sceneHead">
+      <div class="sceneName" id="sceneName"></div>
+      <div class="sceneIdx" id="sceneIdx"></div>
+    </div>
+    <div class="text" id="sceneText"></div>
+
+    <div class="choices" id="choices"></div>
+
+    <div class="footer">
+      <div id="tip" class="muted">Enter：次へ / D：寄り道</div>
+      <div id="resume" class="muted"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= 基本設定 ========= */
+const LS = {
+  lastPage: "who_last_page",
+  storyScene: "who_story_scene",
+  lang: "who_lang"
+};
+localStorage.setItem(LS.lastPage, location.pathname.split('/').pop() || 'story.html');
+
+/* ========= i18n ========= */
+const I18N = {
+  ja:{
+    appTitle:"寄り道",
+    lang:"言語",
+    next:"次へ",
+    detour:"寄り道する",
+    back:"本道に戻る",
+    end:"終わりへ進む",
+    resumed:(id)=>`再開中：${id}`
+  },
+  en:{
+    appTitle:"Yorimichi",
+    lang:"Language",
+    next:"Next",
+    detour:"Take a detour",
+    back:"Return to path",
+    end:"Go to the end",
+    resumed:(id)=>`Resumed at: ${id}`
+  }
+};
+const $ = s=>document.querySelector(s);
+const bg = $("#bg");
+
+/* ========= グラデ設計 =========
+  各テーマは関数で CSS background を返す。画像不要。
+*/
+const Gradients = {
+  dawn: () => `
+    radial-gradient(1100px 550px at 50% 8%, rgba(255,210,150,.55), transparent 60%),
+    linear-gradient(180deg,#84c5ff 0%,#7ec6e9 28%,#4f86c6 55%,#2b4d73 70%,#162033 100%)`,
+  morning: () => `
+    radial-gradient(900px 520px at 65% 10%, rgba(255,255,255,.35), transparent 60%),
+    linear-gradient(180deg,#c6f1ff 0%,#8ee0ff 30%,#60b8ea 55%,#2e6fa3 100%)`,
+  noon: () => `
+    linear-gradient(180deg,#9be0ff 0%,#6ec7f1 40%,#
