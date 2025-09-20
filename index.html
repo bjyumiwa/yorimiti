@@ -1,505 +1,234 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>寄り道の散歩ゲーム</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700&display=swap');
-        
-        body {
-            font-family: 'Noto Sans JP', sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        
-        .game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: .5;
-            }
-        }
-        
-        .bounce {
-            animation: bounce 1s infinite;
-        }
-        
-        @keyframes bounce {
-            0%, 100% {
-                transform: translateY(-25%);
-                animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-            }
-            50% {
-                transform: translateY(0);
-                animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-            }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ひと声メーター</title>
+<style>
+  :root{--bg:#0b0f14;--card:#131a22;--text:#eaf2ff;--muted:#9fb3c8;--accent:#82d1ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b0f14,#0e141b);color:var(--text);font-family:system-ui,"Noto Sans JP",sans-serif;min-height:100svh;display:flex;align-items:center;justify-content:center}
+  .wrap{width:min(820px,92vw);padding:20px}
+  .card{background:var(--card);border:1px solid #203040;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px}
+  h1{margin:0 0 4px;font-weight:700;font-size:20px}
+  .muted{color:var(--muted);font-size:13px;margin-bottom:12px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  button{border:none;border-radius:12px;padding:12px 14px;font-weight:600;color:#081018;background:#17324a;cursor:pointer;transition:.15s}
+  button:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.35)}
+  .primary{background:var(--accent)}
+  .pill{background:#152233;color:var(--muted);padding:6px 8px;border-radius:10px;font-size:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+  .panel{background:#0e1620;border:1px dashed #203040;border-radius:12px;padding:12px}
+  .counter{font-size:42px;font-weight:800;letter-spacing:.5px}
+  .feathers{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .feather{width:14px;height:24px;border-radius:10px 10px 12px 12px;background:linear-gradient(180deg,#c7f1ff,#82d1ff);opacity:.5;filter:drop-shadow(0 0 6px rgba(130,209,255,.4))}
+  .feather.on{opacity:1}
+  textarea{width:100%;background:#0b1118;border:1px solid #1c2a3a;border-radius:10px;color:var(--text);padding:10px;height:70px}
+  .right{display:flex;gap:8px;justify-content:flex-end}
+  .small{font-size:12px}
+  .ok{color:#c5ffd0}
+</style>
 </head>
 <body>
-    <div id="root"></div>
+<div class="wrap">
+  <div class="card">
+    <h1>ひと声メーター</h1>
+    <div class="muted" id="subtitle"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    <div class="grid">
+      <div class="panel">
+        <div class="pill" id="streak">連続 0 日</div>
+        <div class="counter" id="count">0</div>
+        <div class="muted">今日は何回、ひと声を交わせたでしょう？</div>
+        <div class="row">
+          <button class="primary" data-cat="hello">こんにちは</button>
+          <button data-cat="thanks">ありがとう</button>
+          <button data-cat="other">その他</button>
+        </div>
+        <div class="muted small" id="cooldownMsg"></div>
+        <div class="feathers" id="feathers"></div>
+      </div>
 
-        const WalkingGame = () => {
-            const [currentScene, setCurrentScene] = useState(0);
-            const [playerX, setPlayerX] = useState(400);
-            const [playerY, setPlayerY] = useState(300);
-            const [isWalking, setIsWalking] = useState(true);
-            const [score, setScore] = useState(0);
-            const [gameMessage, setGameMessage] = useState('散歩を始めましょう！');
-            const [isDragging, setIsDragging] = useState(false);
-            const [collectedItems, setCollectedItems] = useState([]);
-            const [gameOver, setGameOver] = useState(false);
-            const [collectedInScene, setCollectedInScene] = useState([]);
-            const [walkingSpeed] = useState(1.5);
+      <div class="panel">
+        <div class="pill">任意メモ（相手名は書かず ○○ など匿名で）</div>
+        <textarea id="note" placeholder="例）○○にドアを開けてもらって『ありがとう』と言えた"></textarea>
+        <div class="right">
+          <button id="export">CSVとして保存</button>
+          <button id="clear">今日をリセット</button>
+        </div>
+        <div class="muted small" id="status"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-            const gameRef = useRef(null);
+<script>
+(function(){
+  const DAY_LIMIT = 10;
+  const COOLDOWN_SEC = 20;
+  const FEATHER_STEPS = [3,5,8,10]; // 到達で羽が点灯
+  const storeKey = "greet_records_v1";
 
-            const scenes = [
-                {
-                    name: "花畑の道",
-                    background: "linear-gradient(to bottom, #87CEEB, #98FB98)",
-                    obstacles: [
-                        { type: "hole", x: 300, y: 400, width: 80, height: 60 },
-                        { type: "hole", x: 500, y: 350, width: 70, height: 50 }
-                    ],
-                    distractions: [
-                        { type: "flower", x: 200, y: 200, emoji: "🌸" },
-                        { type: "flower", x: 600, y: 250, emoji: "🌺" },
-                        { type: "butterfly", x: 450, y: 180, emoji: "🦋" }
-                    ]
-                },
-                {
-                    name: "森の小道",
-                    background: "linear-gradient(to bottom, #228B22, #32CD32)",
-                    obstacles: [
-                        { type: "cliff", x: 0, y: 450, width: 200, height: 100 },
-                        { type: "hole", x: 400, y: 380, width: 90, height: 70 }
-                    ],
-                    distractions: [
-                        { type: "mushroom", x: 150, y: 300, emoji: "🍄" },
-                        { type: "squirrel", x: 550, y: 200, emoji: "🐿️" },
-                        { type: "acorn", x: 350, y: 250, emoji: "🌰" }
-                    ]
-                },
-                {
-                    name: "川辺の道",
-                    background: "linear-gradient(to bottom, #87CEEB, #ADD8E6)",
-                    obstacles: [
-                        { type: "river", x: 100, y: 400, width: 600, height: 80 },
-                        { type: "hole", x: 250, y: 300, width: 60, height: 50 }
-                    ],
-                    distractions: [
-                        { type: "fish", x: 400, y: 440, emoji: "🐠" },
-                        { type: "stone", x: 180, y: 350, emoji: "🪨" },
-                        { type: "frog", x: 520, y: 380, emoji: "🐸" }
-                    ]
-                },
-                {
-                    name: "岩場の道",
-                    background: "linear-gradient(to bottom, #D2691E, #CD853F)",
-                    obstacles: [
-                        { type: "cliff", x: 600, y: 300, width: 200, height: 200 },
-                        { type: "hole", x: 200, y: 400, width: 100, height: 80 },
-                        { type: "hole", x: 450, y: 350, width: 80, height: 60 }
-                    ],
-                    distractions: [
-                        { type: "crystal", x: 320, y: 250, emoji: "💎" },
-                        { type: "lizard", x: 150, y: 300, emoji: "🦎" },
-                        { type: "cactus", x: 550, y: 200, emoji: "🌵" }
-                    ]
-                },
-                {
-                    name: "お花見の道",
-                    background: "linear-gradient(to bottom, #FFB6C1, #FFC0CB)",
-                    obstacles: [
-                        { type: "hole", x: 350, y: 380, width: 120, height: 90 },
-                        { type: "cliff", x: 0, y: 420, width: 150, height: 80 }
-                    ],
-                    distractions: [
-                        { type: "sakura", x: 200, y: 150, emoji: "🌸" },
-                        { type: "sakura", x: 500, y: 200, emoji: "🌸" },
-                        { type: "bee", x: 400, y: 250, emoji: "🐝" },
-                        { type: "picnic", x: 300, y: 300, emoji: "🧺" }
-                    ]
-                },
-                {
-                    name: "夕暮れの道",
-                    background: "linear-gradient(to bottom, #FF6347, #FF7F50)",
-                    obstacles: [
-                        { type: "hole", x: 250, y: 350, width: 80, height: 70 },
-                        { type: "cliff", x: 500, y: 400, width: 300, height: 100 }
-                    ],
-                    distractions: [
-                        { type: "firefly", x: 180, y: 280, emoji: "✨" },
-                        { type: "owl", x: 450, y: 200, emoji: "🦉" },
-                        { type: "moon", x: 600, y: 150, emoji: "🌙" }
-                    ]
-                },
-                {
-                    name: "砂漠の道",
-                    background: "linear-gradient(to bottom, #F4A460, #DEB887)",
-                    obstacles: [
-                        { type: "quicksand", x: 200, y: 380, width: 150, height: 100 },
-                        { type: "cliff", x: 550, y: 350, width: 250, height: 150 },
-                        { type: "hole", x: 400, y: 320, width: 70, height: 60 }
-                    ],
-                    distractions: [
-                        { type: "camel", x: 150, y: 250, emoji: "🐪" },
-                        { type: "oasis", x: 500, y: 200, emoji: "🏝️" },
-                        { type: "snake", x: 350, y: 280, emoji: "🐍" }
-                    ]
-                },
-                {
-                    name: "雪の道",
-                    background: "linear-gradient(to bottom, #E6E6FA, #F0F8FF)",
-                    obstacles: [
-                        { type: "ice", x: 300, y: 350, width: 200, height: 120 },
-                        { type: "hole", x: 150, y: 400, width: 90, height: 70 }
-                    ],
-                    distractions: [
-                        { type: "snowman", x: 200, y: 250, emoji: "⛄" },
-                        { type: "rabbit", x: 450, y: 280, emoji: "🐰" },
-                        { type: "icicle", x: 550, y: 200, emoji: "🧊" }
-                    ]
-                },
-                {
-                    name: "竹林の道",
-                    background: "linear-gradient(to bottom, #228B22, #90EE90)",
-                    obstacles: [
-                        { type: "hole", x: 250, y: 380, width: 100, height: 80 },
-                        { type: "cliff", x: 500, y: 420, width: 300, height: 80 }
-                    ],
-                    distractions: [
-                        { type: "panda", x: 180, y: 280, emoji: "🐼" },
-                        { type: "bamboo", x: 400, y: 200, emoji: "🎋" },
-                        { type: "dragonfly", x: 350, y: 250, emoji: "🪰" }
-                    ]
-                },
-                {
-                    name: "ゴール地点",
-                    background: "linear-gradient(to bottom, #FFD700, #FFA500)",
-                    obstacles: [
-                        { type: "final_pit", x: 350, y: 400, width: 150, height: 80 }
-                    ],
-                    distractions: [
-                        { type: "treasure", x: 400, y: 250, emoji: "🏆" },
-                        { type: "rainbow", x: 300, y: 150, emoji: "🌈" },
-                        { type: "celebration", x: 200, y: 200, emoji: "🎉" }
-                    ]
-                }
-            ];
+  const elCount = document.getElementById("count");
+  const elStreak = document.getElementById("streak");
+  const elFeathers = document.getElementById("feathers");
+  const elCooldown = document.getElementById("cooldownMsg");
+  const elStatus = document.getElementById("status");
+  const subtitle = document.getElementById("subtitle");
+  const note = document.getElementById("note");
 
-            // Reset collected items when scene changes
-            useEffect(() => {
-                setCollectedInScene([]);
-            }, [currentScene]);
+  const btns = Array.from(document.querySelectorAll("button[data-cat]"));
+  const btnExport = document.getElementById("export");
+  const btnClear = document.getElementById("clear");
 
-            useEffect(() => {
-                let interval;
-                if (isWalking && !gameOver) {
-                    interval = setInterval(() => {
-                        setPlayerX(prev => {
-                            const newX = prev + walkingSpeed;
-                            
-                            // Check for obstacles with current position
-                            const scene = scenes[currentScene];
-                            let hitObstacle = false;
-                            
-                            scene.obstacles.forEach(obstacle => {
-                                if (newX >= obstacle.x && newX <= obstacle.x + obstacle.width &&
-                                    playerY >= obstacle.y && playerY <= obstacle.y + obstacle.height) {
-                                    const obstacleNames = {
-                                        hole: "穴",
-                                        cliff: "崖", 
-                                        river: "川",
-                                        quicksand: "流砂",
-                                        ice: "氷",
-                                        final_pit: "最後の落とし穴"
-                                    };
-                                    setGameMessage(`${obstacleNames[obstacle.type] || obstacle.type}に落ちた！ドラッグで戻して！`);
-                                    setIsWalking(false);
-                                    hitObstacle = true;
-                                }
-                            });
-                            
-                            if (hitObstacle) return prev;
-                            
-                            if (newX > 750) {
-                                if (currentScene < scenes.length - 1) {
-                                    setCurrentScene(prev => prev + 1);
-                                    setGameMessage(`${scenes[currentScene + 1]?.name}に到着！`);
-                                    return 50;
-                                } else {
-                                    setGameMessage("おめでとう！ゴールです！🎉");
-                                    setIsWalking(false);
-                                    setGameOver(true);
-                                    return prev;
-                                }
-                            }
-                            return newX;
-                        });
-                    }, 50);
-                }
-                return () => clearInterval(interval);
-            }, [isWalking, currentScene, playerY, gameOver]);
+  function todayStr(d=new Date()){
+    const tzOffset = d.getTimezoneOffset(); // ローカルでOK
+    const local = new Date(d.getTime() - tzOffset*60000);
+    return local.toISOString().slice(0,10);
+  }
 
-            const handleMouseDown = (e) => {
-                setIsDragging(true);
-            };
+  function load(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(storeKey) || "{}");
+      return {
+        records: raw.records || [],
+        meta: raw.meta || { streak:0, lastDay: null, todayCount:0, lastTs:0 }
+      };
+    }catch(e){ return {records:[], meta:{streak:0,lastDay:null,todayCount:0,lastTs:0}}}
+  }
+  function save(state){ localStorage.setItem(storeKey, JSON.stringify(state)); }
 
-            const handleMouseMove = (e) => {
-                if (isDragging) {
-                    const rect = gameRef.current.getBoundingClientRect();
-                    const newX = e.clientX - rect.left;
-                    const newY = e.clientY - rect.top;
-                    
-                    setPlayerX(Math.max(50, Math.min(750, newX)));
-                    setPlayerY(Math.max(150, Math.min(450, newY)));
-                    
-                    if (newY < 350) {
-                        setGameMessage("道に戻りました！");
-                        setIsWalking(true);
-                    }
-                }
-            };
+  function startOfDay(ts){
+    const d = new Date(ts);
+    d.setHours(0,0,0,0);
+    return d.getTime();
+  }
 
-            const handleMouseUp = () => {
-                setIsDragging(false);
-            };
+  function ensureDay(state){
+    const day = todayStr();
+    if(state.meta.lastDay !== day){
+      // 日付跨ぎ → streak更新
+      if(state.meta.lastDay){ // 既に何かの日を経験している
+        // 昨日記録があったかの判定
+        const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+        const yStr = todayStr(yesterday);
+        const hadYesterday = state.records.some(r => r.day === yStr);
+        state.meta.streak = hadYesterday ? (state.meta.streak||0)+1 : 1;
+      }else{
+        state.meta.streak = 1;
+      }
+      state.meta.lastDay = day;
+      state.meta.todayCount = 0;
+      state.meta.lastTs = 0;
+    }
+  }
 
-            const handleTouchStart = (e) => {
-                e.preventDefault();
-                setIsDragging(true);
-            };
+  function render(state){
+    const day = state.meta.lastDay || todayStr();
+    const todayRecs = state.records.filter(r => r.day === day);
+    elCount.textContent = todayRecs.length.toString();
+    elStreak.textContent = `連続 ${state.meta.streak||0} 日`;
+    subtitle.textContent = `${day} の小さな挨拶`;
+    renderFeathers(todayRecs.length);
+    // クールダウン表示
+    const now = Date.now();
+    const remains = Math.max(0, (state.meta.lastTs||0) + COOLDOWN_SEC*1000 - now);
+    elCooldown.textContent = remains>0 ? `次の登録まで ${Math.ceil(remains/1000)} 秒` : "";
+  }
 
-            const handleTouchMove = (e) => {
-                e.preventDefault();
-                if (isDragging) {
-                    const touch = e.touches[0];
-                    const rect = gameRef.current.getBoundingClientRect();
-                    const newX = touch.clientX - rect.left;
-                    const newY = touch.clientY - rect.top;
-                    
-                    setPlayerX(Math.max(50, Math.min(750, newX)));
-                    setPlayerY(Math.max(150, Math.min(450, newY)));
-                    
-                    if (newY < 350) {
-                        setGameMessage("道に戻りました！");
-                        setIsWalking(true);
-                    }
-                }
-            };
+  function renderFeathers(n){
+    elFeathers.innerHTML = "";
+    FEATHER_STEPS.forEach(step=>{
+      const f = document.createElement("div");
+      f.className = "feather" + (n>=step ? " on" : "");
+      elFeathers.appendChild(f);
+    });
+  }
 
-            const handleTouchEnd = (e) => {
-                e.preventDefault();
-                setIsDragging(false);
-            };
+  function addRecord(cat, noteText){
+    const state = load();
+    ensureDay(state);
 
-            const collectItem = (item, index) => {
-                if (collectedInScene.includes(index)) return; // Already collected
-                
-                const newItems = [...collectedItems, item];
-                setCollectedItems(newItems);
-                setCollectedInScene(prev => [...prev, index]);
-                setScore(prev => prev + 10);
-                
-                const itemNames = {
-                    flower: "お花", butterfly: "蝶々", mushroom: "きのこ", squirrel: "リス",
-                    acorn: "どんぐり", fish: "魚", stone: "石", frog: "カエル",
-                    crystal: "水晶", lizard: "トカゲ", cactus: "サボテン", sakura: "桜",
-                    bee: "蜂", picnic: "お弁当", firefly: "ホタル", owl: "フクロウ",
-                    moon: "お月様", camel: "ラクダ", oasis: "オアシス", snake: "ヘビ",
-                    snowman: "雪だるま", rabbit: "ウサギ", icicle: "つらら", panda: "パンダ",
-                    bamboo: "竹", dragonfly: "トンボ", treasure: "宝物", rainbow: "虹",
-                    celebration: "お祝い"
-                };
-                
-                setGameMessage(`${item.emoji} ${itemNames[item.type] || item.type}を見つけた！+10点`);
-            };
+    // 上限チェック
+    const day = state.meta.lastDay;
+    const todayRecs = state.records.filter(r => r.day === day);
+    if(todayRecs.length >= DAY_LIMIT){
+      setStatus(`今日は上限 ${DAY_LIMIT} 件です`, false); 
+      return;
+    }
+    // クールダウン
+    const now = Date.now();
+    if((state.meta.lastTs||0) + COOLDOWN_SEC*1000 > now){
+      const wait = Math.ceil(((state.meta.lastTs||0)+COOLDOWN_SEC*1000 - now)/1000);
+      setStatus(`少し間を空けましょう（あと ${wait} 秒）`, false);
+      return;
+    }
+    // 記録
+    state.records.push({
+      ts: now,
+      day,
+      cat,
+      note: (noteText||"").slice(0,80) // 任意・短文
+    });
+    state.meta.todayCount = (state.meta.todayCount||0) + 1;
+    state.meta.lastTs = now;
+    save(state);
+    note.value = "";
+    setStatus("記録しました。", true);
+    render(state);
+  }
 
-            const restartGame = () => {
-                setCurrentScene(0);
-                setPlayerX(400);
-                setPlayerY(300);
-                setIsWalking(true);
-                setScore(0);
-                setGameMessage('散歩を始めましょう！');
-                setIsDragging(false);
-                setCollectedItems([]);
-                setGameOver(false);
-                setCollectedInScene([]);
-            };
+  function setStatus(msg, ok){
+    elStatus.textContent = msg;
+    elStatus.className = ok ? "muted small ok" : "muted small";
+    setTimeout(()=>{ elStatus.textContent=""; }, 2500);
+  }
 
-            const currentSceneData = scenes[currentScene];
+  function exportCSV(){
+    const {records} = load();
+    if(records.length===0){ setStatus("まだ記録がありません。", false); return; }
+    const header = ["date","time","category","note"];
+    const rows = records.map(r=>{
+      const d = new Date(r.ts);
+      const date = todayStr(d);
+      const time = d.toTimeString().slice(0,8);
+      return [date,time,r.cat,(r.note||"").replace(/"/g,'""')];
+    });
+    const csv = [header].concat(rows).map(cols=>cols.map(c=>`"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "hito_koe_records.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
 
-            return (
-                <div className="game-container">
-                    <div className="mb-4 text-white text-center">
-                        <h1 className="text-4xl font-bold mb-4 text-shadow">🚶‍♂️ 寄り道の散歩ゲーム 🌸</h1>
-                        <div className="flex justify-center gap-6 text-lg bg-black bg-opacity-30 p-3 rounded-lg">
-                            <div className="font-semibold">シーン: {currentScene + 1}/10</div>
-                            <div className="font-semibold">📍 {currentSceneData.name}</div>
-                            <div className="font-semibold">🎯 スコア: {score}</div>
-                            <div className="font-semibold">🎁 収集: {collectedItems.length}個</div>
-                        </div>
-                    </div>
+  function clearToday(){
+    const state = load();
+    const day = state.meta.lastDay || todayStr();
+    state.records = state.records.filter(r => r.day !== day);
+    state.meta.todayCount = 0;
+    state.meta.lastTs = 0;
+    save(state);
+    render(state);
+    setStatus("今日の記録を消去しました。", true);
+  }
 
-                    <div 
-                        ref={gameRef}
-                        className="relative border-4 border-white rounded-lg overflow-hidden cursor-crosshair shadow-2xl"
-                        style={{ 
-                            width: '800px', 
-                            height: '500px',
-                            background: currentSceneData.background 
-                        }}
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                    >
-                        {/* Path */}
-                        <div className="absolute top-0 left-0 w-full h-[350px] bg-gradient-to-b from-transparent to-yellow-200 opacity-30"></div>
-                        
-                        {/* Obstacles */}
-                        {currentSceneData.obstacles.map((obstacle, index) => (
-                            <div
-                                key={index}
-                                className={`absolute border-2 border-red-600 ${
-                                    obstacle.type === 'hole' ? 'bg-black rounded-full' :
-                                    obstacle.type === 'cliff' ? 'bg-gray-600' :
-                                    obstacle.type === 'river' ? 'bg-blue-400' :
-                                    obstacle.type === 'quicksand' ? 'bg-yellow-600' :
-                                    obstacle.type === 'ice' ? 'bg-blue-200' :
-                                    obstacle.type === 'final_pit' ? 'bg-red-800' :
-                                    'bg-gray-500'
-                                }`}
-                                style={{
-                                    left: obstacle.x + 'px',
-                                    top: obstacle.y + 'px',
-                                    width: obstacle.width + 'px',
-                                    height: obstacle.height + 'px'
-                                }}
-                            >
-                                <div className="text-center text-white text-xs font-bold p-1">
-                                    {obstacle.type === 'hole' && '穴'}
-                                    {obstacle.type === 'cliff' && '崖'}
-                                    {obstacle.type === 'river' && '川'}
-                                    {obstacle.type === 'quicksand' && '流砂'}
-                                    {obstacle.type === 'ice' && '氷'}
-                                    {obstacle.type === 'final_pit' && '落穴'}
-                                </div>
-                            </div>
-                        ))}
+  // events
+  btns.forEach(b=>{
+    b.addEventListener("click", ()=>{
+      addRecord(b.dataset.cat, note.value.trim());
+    });
+  });
+  btnExport.addEventListener("click", exportCSV);
+  btnClear.addEventListener("click", clearToday);
 
-                        {/* Distractions */}
-                        {currentSceneData.distractions.map((item, index) => {
-                            if (collectedInScene.includes(index)) return null;
-                            return (
-                                <div
-                                    key={index}
-                                    className="absolute cursor-pointer hover:scale-125 transition-transform"
-                                    style={{ 
-                                        left: item.x + 'px', 
-                                        top: item.y + 'px' 
-                                    }}
-                                    onClick={() => collectItem(item, index)}
-                                >
-                                    <div className="text-4xl pulse">{item.emoji}</div>
-                                </div>
-                            );
-                        })}
-
-                        {/* Player */}
-                        <div
-                            className="absolute text-4xl transition-all duration-200 z-10"
-                            style={{ 
-                                left: (playerX - 20) + 'px', 
-                                top: (playerY - 20) + 'px',
-                                transform: isDragging ? 'scale(1.3)' : 'scale(1)'
-                            }}
-                        >
-                            🚶‍♂️
-                        </div>
-
-                        {/* Collected items display */}
-                        <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white p-3 rounded-lg">
-                            <div className="text-sm font-bold mb-1">収集したアイテム:</div>
-                            <div className="flex flex-wrap gap-1 max-w-[200px]">
-                                {collectedItems.slice(-12).map((item, index) => (
-                                    <span key={index} className="text-2xl">{item.emoji}</span>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Progress bar */}
-                        <div className="absolute bottom-2 left-2 right-2 h-3 bg-black bg-opacity-30 rounded-full">
-                            <div 
-                                className="h-full bg-green-400 rounded-full transition-all duration-300"
-                                style={{ width: ((currentScene + 1) / scenes.length * 100) + '%' }}
-                            ></div>
-                        </div>
-                    </div>
-
-                    {/* Game message */}
-                    <div className="mt-4 text-white text-center bg-black bg-opacity-50 p-6 rounded-lg max-w-[800px]">
-                        <div className="text-2xl font-bold mb-2">{gameMessage}</div>
-                        <div className="text-base text-gray-300">
-                            {gameOver ? "🎉 ゲームクリア！素晴らしい散歩でした！" :
-                             isWalking ? "🚶‍♂️ 自動で歩いています。寄り道アイテムをクリックして収集しよう！" : 
-                             "👆 指でドラッグして道に戻してください！"}
-                        </div>
-                        {gameOver && (
-                            <div className="mt-4">
-                                <button 
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-xl transition-colors bounce"
-                                    onClick={restartGame}
-                                >
-                                    🔄 もう一度散歩する
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Instructions */}
-                    <div className="mt-4 text-white text-center max-w-[800px] bg-black bg-opacity-30 p-4 rounded-lg">
-                        <div className="text-lg font-semibold mb-2">🎮 遊び方</div>
-                        <div className="text-sm space-y-1">
-                            <div>👆 キャラクターは自動で歩きます。穴や崖に落ちたら、ドラッグして道に戻しましょう！</div>
-                            <div>✨ 寄り道要素（花、虫、石など）をクリックして収集するとスコアがアップします！</div>
-                            <div>🏆 10のシーンを全てクリアしてゴールを目指しましょう！</div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        ReactDOM.render(<WalkingGame />, document.getElementById('root'));
-    </script>
+  // init
+  const state = load();
+  ensureDay(state);
+  save(state);
+  render(state);
+})();
+</script>
 </body>
 </html>
